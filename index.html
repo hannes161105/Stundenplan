@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mein Stundenplan GT</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: Kopfzeile mit Wochennavigation, darunter Tagesspalten Mo-Fr (auf dem Handy untereinander).
+   Pflichttermine sind gefüllt und farbig nach Art, freiwillige Termine gestrichelt und leise. */
+:root {
+  --font-display: "Archivo", "Arial Narrow", Arial, sans-serif;
+  --font-body: "Archivo", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+
+  --bg: #ECF1EE;
+  --surface: #FFFFFF;
+  --ink: #14221C;
+  --muted: #566861;
+  --line: #C7D4CE;
+  --accent: #0E6B55;
+  --on-accent: #FFFFFF;
+  --dashed: #A7B6AF;
+  --alert: #B3261E;
+
+  --v: #0E6B55;  --v-bg: #DCEEE7;
+  --u: #284F94;  --u-bg: #E0E8F6;
+  --p: #98500A;  --p-bg: #F6E8D5;
+  --on-k: #FFFFFF;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0D1511; --surface: #14201B; --ink: #E3ECE7; --muted: #94A69E; --line: #2A3A33;
+    --accent: #5FC3A5; --on-accent: #0D1511; --dashed: #3F5049; --alert: #FF8F86;
+    --v: #6FD1B2; --v-bg: #16342A;
+    --u: #92B4F2; --u-bg: #192741;
+    --p: #F0B46C; --p-bg: #3A2713;
+    --on-k: #0D1511;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0D1511; --surface: #14201B; --ink: #E3ECE7; --muted: #94A69E; --line: #2A3A33;
+  --accent: #5FC3A5; --on-accent: #0D1511; --dashed: #3F5049; --alert: #FF8F86;
+  --v: #6FD1B2; --v-bg: #16342A;
+  --u: #92B4F2; --u-bg: #192741;
+  --p: #F0B46C; --p-bg: #3A2713;
+  --on-k: #0D1511;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 15px/1.45 var(--font-body);
+}
+.wrap {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding-inline: 16px;
+  padding-block: 22px 40px;
+}
+
+.top { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px 24px; }
+.eyebrow { margin: 0 0 4px; font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+h1 { margin: 0; font: 800 clamp(28px, 6vw, 40px)/1.05 var(--font-display); letter-spacing: -.02em; text-wrap: balance; }
+.toggle { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; color: var(--muted); cursor: pointer; }
+.toggle input { width: 18px; height: 18px; accent-color: var(--accent); }
+
+.weeknav { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-block: 18px 6px; }
+.btn {
+  font: 600 14px/1 var(--font-body);
+  min-width: 44px; min-height: 40px; padding: 0 14px;
+  color: var(--ink); background: var(--surface);
+  border: 1px solid var(--line); border-radius: 4px; cursor: pointer;
+}
+.btn:hover:not(:disabled) { border-color: var(--accent); }
+.btn:disabled { opacity: .4; cursor: default; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.btn:focus-visible, .toggle input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.weeklabel { display: flex; flex-direction: column; min-width: 0; padding-inline: 6px; flex: 1 1 200px; }
+.weeklabel strong { font-size: 18px; font-weight: 700; }
+.weeklabel span { font: 400 13px var(--font-mono); color: var(--muted); }
+.weeknote { margin: 4px 0 0; font-size: 13px; color: var(--muted); }
+
+.days { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 12px; margin-top: 14px; }
+@media (min-width: 1100px) { .days { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+.day { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 10px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.day.is-today { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.dayhead { display: flex; align-items: baseline; gap: 8px; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
+.dname { font: 800 18px var(--font-display); letter-spacing: -.01em; }
+.ddate { font: 400 13px var(--font-mono); color: var(--muted); }
+.badge { margin-left: auto; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; background: var(--accent); color: var(--on-accent); padding: 2px 7px; border-radius: 3px; }
+.free { margin: 6px 0; color: var(--muted); font-size: 14px; }
+
+.ev { display: grid; gap: 3px; min-width: 0; padding: 9px 10px; border-radius: 4px; }
+.ev[data-k="V"] { --k: var(--v); --kbg: var(--v-bg); }
+.ev[data-k="U"] { --k: var(--u); --kbg: var(--u-bg); }
+.ev[data-k="P"] { --k: var(--p); --kbg: var(--p-bg); }
+.ev[data-k="X"] { --k: var(--muted); --kbg: var(--surface); }
+.ev.must { background: var(--kbg); }
+.ev.neutral { border: 1px solid var(--line); }
+.ev .row { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.chip { flex: none; width: 22px; height: 22px; display: inline-grid; place-items: center; border-radius: 3px; font-size: 12px; font-weight: 800; font-style: normal; background: var(--k); color: var(--on-k); }
+.time { font: 500 12.5px var(--font-mono); font-variant-numeric: tabular-nums; }
+.title { font-weight: 700; overflow-wrap: anywhere; }
+.meta { font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
+.ev.must .meta { color: color-mix(in srgb, var(--ink) 70%, transparent); }
+.note { font-size: 12.5px; font-weight: 600; color: var(--k); }
+.warn { font-size: 12.5px; font-weight: 700; color: var(--alert); }
+
+.ev.vol { border: 1px dashed var(--dashed); padding: 6px 10px; color: var(--muted); }
+.ev.vol .title { font-weight: 500; font-size: 13.5px; }
+.ev.vol .time { font-size: 12px; }
+.ev.vol .tag { margin-left: auto; font-size: 11px; letter-spacing: .05em; text-transform: uppercase; }
+
+.legend { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 22px; font-size: 13px; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend .chip { width: 20px; height: 20px; font-size: 11px; }
+.legend .dash { width: 20px; height: 20px; border: 1px dashed var(--dashed); border-radius: 3px; }
+.foot { margin-top: 18px; font-size: 13px; color: var(--muted); max-width: 70ch; }
+.foot a { color: var(--accent); }
+@media (prefers-reduced-motion: no-preference) { .btn { transition: border-color .12s; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <p class="eyebrow">Green Technology B.Eng. · 1. Semester · Gruppe GT</p>
+      <h1>Mein Stundenplan</h1>
+    </div>
+    <label class="toggle"><input type="checkbox" id="vol" checked> Freiwillige Termine anzeigen</label>
+  </header>
+
+  <nav class="weeknav" aria-label="Woche wählen">
+    <button class="btn" id="prev" type="button" aria-label="Vorherige Woche">&#8249;</button>
+    <div class="weeklabel" aria-live="polite"><strong id="wk"></strong><span id="wrange"></span></div>
+    <button class="btn" id="next" type="button" aria-label="Nächste Woche">&#8250;</button>
+    <button class="btn primary" id="today" type="button">Heute</button>
+  </nav>
+  <p class="weeknote" id="wnote" hidden></p>
+
+  <main class="days" id="days"></main>
+
+  <section class="legend" aria-label="Legende">
+    <span><i class="chip" style="--k:var(--v)">V</i> Vorlesung</span>
+    <span><i class="chip" style="--k:var(--u)">Ü</i> Übung</span>
+    <span><i class="chip" style="--k:var(--p)">P</i> Praktikum</span>
+    <span><i class="dash"></i> Freiwillig (Tutorium, Lernwerkstatt)</span>
+  </section>
+
+  <p class="foot">
+    Stand des Originalplans: 11.10.2026, 0:10 Uhr. Diese Seite wurde am 11.10.2026, 17:12 Uhr aus dem Originalplan erzeugt.
+    Alle Angaben ohne Gewähr, maßgeblich ist der
+    <a href="https://moodle.fh-westkueste.de/sked/jahrg%C3%A4ngefbw/Green%20Technology%20(B.Eng.)%202026.html" target="_blank" rel="noopener">Originalplan</a>.
+  </p>
+</div>
+
+<script>
+var PLAN = {"weeks":[{"s":"2026-10-12","nr":3,"kw":42,"notes":[]},{"s":"2026-10-19","nr":4,"kw":43,"notes":[]},{"s":"2026-10-26","nr":5,"kw":44,"notes":["31.10. Reformationstag"]},{"s":"2026-11-02","nr":6,"kw":45,"notes":[]},{"s":"2026-11-09","nr":7,"kw":46,"notes":[]},{"s":"2026-11-16","nr":8,"kw":47,"notes":[]},{"s":"2026-11-23","nr":9,"kw":48,"notes":[]},{"s":"2026-11-30","nr":10,"kw":49,"notes":[]},{"s":"2026-12-07","nr":11,"kw":50,"notes":[]},{"s":"2026-12-14","nr":12,"kw":51,"notes":[]},{"s":"2027-01-04","nr":15,"kw":1,"notes":[]},{"s":"2027-01-11","nr":16,"kw":2,"notes":[]}],"events":{"2026-10-13":[{"s":"08:15","e":"09:45","k":"V","t":"Bautechnik und Mechanik","r":"H12","w":"Prof. Dr. Opel","n":"","x":""},{"s":"10:00","e":"11:30","k":"U","t":"Bautechnik und Mechanik (MG4)","r":"H12","w":"Prof. Dr. Opel","n":"","x":""},{"s":"12:15","e":"13:45","k":"V","t":"Grundlagen Mathematik","r":"Audi 2","w":"Dipl. Math. Schröder","n":"","x":""},{"s":"14:00","e":"15:30","k":"U","t":"Grundlagen Mathematik","r":"H14","w":"Dipl. Math. Schröder","n":"","x":""},{"s":"15:45","e":"17:15","k":"L","t":"Lernwerkstatt online","r":"H13","w":"Hr. Kühl und Hr. Herbst","n":"","x":""},{"s":"17:30","e":"19:00","k":"L","t":"Lernwerkstatt online","r":"H13","w":"Hr. Kühl und Hr. Herbst","n":"","x":""}],"2026-10-14":[{"s":"08:15","e":"09:45","k":"U","t":"Grundlagen Physik","r":"H12","w":"Prof. Dr. Hermersdorf","n":"","x":""},{"s":"10:00","e":"11:30","k":"V","t":"Grundlagen Informatik","r":"H12","w":"Prof. Dr. Schädler","n":"","x":""},{"s":"14:00","e":"15:30","k":"P","t":"Grundlagen Informatik, Praktikum","r":"DV2 / 2.058","w":"MSc. Harders, MSc. Wriedt","n":"Gruppe 2","x":""},{"s":"15:45","e":"17:15","k":"U","t":"Englisch I","r":"H13, S12","w":"Carolan, Stover","n":"","x":""},{"s":"17:30","e":"19:00","k":"U","t":"Englisch I","r":"H13, S12","w":"Carolan, Stover","n":"","x":""}],"2026-10-15":[{"s":"08:15","e":"09:45","k":"V","t":"Grundlagen Elektrotechnik I","r":"Audi 2","w":"Dipl. Ing. Sterzik","n":"","x":""},{"s":"10:00","e":"11:30","k":"U","t":"Grundlagen Elektrotechnik I","r":"H13","w":"Dipl. Ing. Sterzik","n":"","x":""},{"s":"12:15","e":"13:45","k":"U","t":"Grundlagen Mathematik","r":"H14","w":"Dipl. Math. Schröder","n":"Vertiefung","x":""},{"s":"17:30","e":"19:00","k":"X","t":"SV Mentoring Program","r":"H14","w":"","n":"","x":""}],"2026-10-12":[{"s":"10:00","e":"11:30","k":"V","t":"Grundlagen Physik","r":"Audi 2","w":"Prof. Dr. Hermersdorf","n":"","x":""},{"s":"15:45","e":"17:15","k":"P","t":"Grundlagen Elektrotechnik I, Praktikum","r":"1.015","w":"Dipl. Ing. Patock, Dipl. Ing. Sterzik","n":"GET I 4/05 · Gleichstromnetzwerke","x":""},{"s":"17:30","e":"19:00","k":"P","t":"Grundlagen Elektrotechnik I, Praktikum","r":"1.015","w":"Dipl. Ing. Patock, Dipl. Ing. Sterzik","n":"GET I 4/05 · Gleichstromnetzwerke","x":""},{"s":"17:30","e":"19:00","k":"L","t":"Lernwerkstatt online","r":"H12","w":"Hr. Kühl und Hr. Herbst","n":"","x":""}],"2026-10-19":[{"s":"08:15","e":"09:45","k":"T","t":"Physik Praktikumsbericht Tutorium","r":"H14","w":"Prof. Dr. Hermersdorf","n":"","x":""},{"s":"10:00","e":"11:30","k":"V","t":"Grundlagen Physik","r":"Audi 2","w":"Prof. Dr. Hermersdorf","n":"","x":""},{"s":"12:15","e":"13:45","k":"P","t":"Grundlagen Physik, Praktikum","r":"0.13","w":"Prof. Dr. Hermersdorf, MSc. Wriedt","n":"Versuch 3","x":""},{"s":"14:00","e":"15:30","k":"P","t":"Grundlagen Physik, Praktikum","r":"0.13","w":"Prof. Dr. Hermersdorf, MSc. Wriedt","n":"Versuch 3","x":""},{"s":"17:30","e":"19:00","k":"L","t":"Lernwerkstatt online","r":"H12","w":"Hr. Kühl und Hr. Herbst","n":"","x":""}],"2026-10-20":[{"s":"08:15","e":"09:45","k":"V","t":"Bautechnik und Mechanik","r":"H12","w":"Prof. Dr. Opel","n":"","x":""},{"s":"10:00","e":"11:30","k":"U","t":"Bautechnik und Mechanik (MG4)","r":"H12","w":"Prof. Dr. Opel","n":"","x":""},{"s":"12:15","e":"13:45","k":"V","t":"Grundlagen Mathematik","r":"Audi 2","w":"Dipl. Math. Schröder","n":"","x":""},{"s":"14:00","e":"15:30","k":"U","t":"Grundlagen Mathematik","r":"H14","w":"Dipl. Math. Schröder","n":"","x":""},{"s":"15:45","e":"17:15","k":"L","t":"Lernwerkstatt online","r":"H13","w":"Hr. Kühl und Hr. Herbst","n":"","x":""},{"s":"17:30","e":"19:00","k":"L","t":"Lernwerkstatt online","r":"H13","w":"Hr. Kühl und Hr. Herbst","n":"","x":""}],"2026-10-21":[{"s":"08:15","e":"09:45","k":"U","t":"Grundlagen Physik","r":"H12","w":"Prof. Dr. Hermersdorf","n":"","x":""},{"s":"10:00","e":"11:30","k":"V","t":"Grundlagen Informatik","r":"H12","w":"Prof. Dr. Schädler","n":"","x":""},{"s":"14:00","e":"15:30","k":"P","t":"Grundlagen Informatik, Praktikum","r":"DV2 / 2.058","w":"MSc. Harders, MSc. Wriedt","n":"Gruppe 2","x":""},{"s":"15:45","e":"17:15","k":"U","t":"Englisch I","r":"H13, S12","w":"Carolan, Stover","n":"","x":""},{"s":"17:30","e":"19:00","k":"U","t":"Englisch I","r":"H13, S12","w":"Carolan, Stover","n":"","x":""}],"2026-10-22":[{"s":"08:15","e":"09:45","k":"V","t":"Grundlagen Elektrotechnik I","r":"Audi 2","w":"Dipl. Ing. Sterzik","n":"","x":""},{"s":"10:00","e":"11:30","k":"U","t":"Grundlagen Elektrotechnik I","r":"H13","w":"Dipl. Ing. Sterzik","n":"","x":""},{"s":"12:15","e":"13:45","k":"U","t":"Grundlagen Mathematik","r":"H14","w":"Dipl. Math. Schröder","n":"Vertiefung","x":""}],"2026-10-26":[{"s":"08:15","e":"09:45","k":"T","t":"Physik Praktikumsbericht Tutorium","r":"H14","w":"Prof. Dr. Hermersdorf","n":"","x":""},{"s":"10:00","e":"11:30","k":"V","t":"Grundlagen Physik","r":"Audi 2","w":"Prof. Dr. Hermersdorf","n":"","x":""},{"s":"17:30","e":"19:00","k":"L","t":"Lernwerkstatt online","r":"H12","w":"Hr. Kühl und Hr. Herbst","n":"","x":""}],"2026-10-27":[{"s":"08:15","e":"09:45","k":"V","t":"Bautechnik und Mechanik","r":"H12","w":"Prof. Dr. Opel","n":"","x":""},{"s":"10:00","e":"11:30","k":"U","t":"Bautechnik und Mechanik (MG4)","r":"H12","w":"Prof. Dr. Opel","n":"","x":""},{"s":"12:15","e":"13:45","k":"V","t":"Grundlagen Mathematik","r":"Audi 2","w":"Dipl. Math. Schröder","n":"","x":""},{"s":"14:00","e":"15:30","k":"U","t":"Grundlagen Mathematik","r":"H14","w":"Dipl. Math. Schröder","n":"","x":""},{"s":"15:45","e":"17:15","k":"L","t":"Lernwerkstatt online","r":"H13","w":"Hr. Kühl und Hr. Herbst","n":"","x":""},{"s":"17:30","e":"19:00","k":"L","t":"Lernwerkstatt online","r":"H13","w":"Hr. Kühl und Hr. Herbst","n":"","x":""}],"2026-10-28":[{"s":"08:15","e":"09:45","k":"U","t":"Grundlagen Physik","r":"H12","w":"Prof. Dr. Hermersdorf","n":"","x":""},{"s":"10:00","e":"11:30","k":"V","t":"Grundlagen Informatik","r":"H12","w":"Prof. Dr. Schädler","n":"","x":""},{"s":"14:00","e":"15:30","k":"P","t":"Grundlagen Informatik, Praktikum","r":"DV2 / 2.058","w":"MSc. Harders, MSc. Wriedt","n":"Gruppe 2","x":""},{"s":"15:45","e":"17:15","k":"U","t":"Englisch I","r":"H13, S12","w":"Carolan, Stover","n":"","x":""},{"s":"17:30","e":"19:00","k":"U","t":"Englisch I","r":"H13, S12","w":"Carolan, Stover","n":"","x":""}],"2026-10-29":[{"s":"08:15","e":"09:45","k":"V","t":"Grundlagen Elektrotechnik I","r":"Audi 2","w":"Dipl. Ing. Sterzik","n":"","x":""},{"s":"10:00","e":"11:30","k":"U","t":"Grundlagen Elektrotechnik I","r":"H13","w":"Dipl. Ing. Sterzik","n":"","x":""},{"s":"12:15","e":"13:45","k":"U","t":"Grundlagen Mathematik","r":"H14","w":"Dipl. Math. Schröder","n":"Vertiefung","x":""}],"2026-10-30":[{"s":"10:00","e":"11:30","k":"P","t":"Bautechnik und Mechanik, Praktikum","r":"1.012, H12","w":"Müller-Bengtson","n":"","x":""},{"s":"11:45","e":"13:15","k":"P","t":"Bautechnik und Mechanik, Praktikum","r":"1.012, H12","w":"Müller-Bengtson","n":"","x":""}],"2026-11-02":[{"s":"08:15","e":"09:45","k":"T","t":"Physik Praktikumsbericht Tutorium","r":"H14","w":"Prof. Dr. Hermersdorf","n":"","x":""},{"s":"10:00","e":"11:30","k":"V","t":"Grundlagen Physik","r":"Audi 2","w":"Prof. Dr. Hermersdorf","n":"","x":""},{"s":"12:15","e":"13:45","k":"P","t":"Grundlagen Physik, Praktikum","r":"0.13","w":"Prof. Dr. Hermersdorf, MSc. Wriedt","n":"Versuch 4","x":""},{"s":"14:00","e":"15:30","k":"P","t":"Grundlagen Physik, Praktikum","r":"0.13","w":"Prof. Dr. Hermersdorf, MSc. Wriedt","n":"Versuch 4","x":""},{"s":"15:45","e":"17:15","k":"P","t":"Grundlagen Elektrotechnik I, Praktikum","r":"1.015","w":"Dipl. Ing. Patock, Dipl. Ing. Sterzik","n":"GET I 3/05 · Leistungsmessung","x":""},{"s":"17:30","e":"19:00","k":"P","t":"Grundlagen Elektrotechnik I, Praktikum","r":"1.015","w":"Dipl. Ing. Patock, Dipl. Ing. Sterzik","n":"GET I 3/05 · Leistungsmessung","x":""},{"s":"17:30","e":"19:00","k":"L","t":"Lernwerkstatt online","r":"H12","w":"Hr. Kühl und Hr. Herbst","n":"","x":""}],"2026-11-03":[{"s":"08:15","e":"09:45","k":"V","t":"Bautechnik und Mechanik","r":"H12","w":"Prof. Dr. Opel","n":"","x":""},{"s":"10:00","e":"11:30","k":"U","t":"Bautechnik und Mechanik (MG4)","r":"H12","w":"Prof. Dr. Opel","n":"","x":""},{"s":"12:15","e":"13:45","k":"V","t":"Grundlagen Mathematik","r":"Audi 2","w":"Dipl. Math. Schröder","n":"","x":""},{"s":"14:00","e":"15:30","k":"U","t":"Grundlagen Mathematik","r":"H14","w":"Dipl. Math. Schröder","n":"","x":""},{"s":"15:45","e":"17:15","k":"L","t":"Lernwerkstatt online","r":"H13","w":"Hr. Kühl und Hr. Herbst","n":"","x":""},{"s":"17:30","e":"19:00","k":"L","t":"Lernwerkstatt online","r":"H13","w":"Hr. Kühl und Hr. Herbst","n":"","x":""}],"2026-11-04":[{"s":"08:15","e":"09:45","k":"U","t":"Grundlagen Physik","r":"H12","w":"Prof. Dr. Hermersdorf","n":"","x":""},{"s":"10:00","e":"11:30","k":"V","t":"Grundlagen Informatik","r":"H12","w":"Prof. Dr. Schädler","n":"","x":""},{"s":"14:00","e":"15:30","k":"P","t":"Grundlagen Informatik, Praktikum","r":"DV2 / 2.058","w":"MSc. Harders, MSc. Wriedt","n":"Gruppe 2","x":""},{"s":"15:45","e":"17:15","k":"U","t":"Englisch I","r":"H13, S12","w":"Carolan, Stover","n":"","x":""},{"s":"17:30","e":"19:00","k":"U","t":"Englisch I","r":"H13, S12","w":"Carolan, Stover","n":"","x":""}],"2026-11-05":[{"s":"08:15","e":"09:45","k":"V","t":"Grundlagen Elektrotechnik I","r":"Audi 2","w":"Dipl. Ing. Sterzik","n":"","x":""},{"s":"10:00","e":"11:30","k":"U","t":"Grundlagen Elektrotechnik I","r":"H13","w":"Dipl. Ing. Sterzik","n":"","x":""},{"s":"12:15","e":"13:45","k":"U","t":"Grundlagen Mathematik","r":"H14","w":"Dipl. Math. Schröder","n":"Vertiefung","x":""}],"2026-11-06":[{"s":"10:00","e":"11:30","k":"P","t":"Bautechnik und Mechanik, Praktikum","r":"1.012","w":"Müller-Bengtson","n":"","x":""},{"s":"11:45","e":"13:15","k":"P","t":"Bautechnik und Mechanik, Praktikum","r":"1.012","w":"Müller-Bengtson","n":"","x":""}],"2026-11-09":[{"s":"08:15","e":"09:45","k":"T","t":"Physik Praktikumsbericht Tutorium","r":"H14","w":"Prof. Dr. Hermersdorf","n":"","x":""},{"s":"10:00","e":"11:30","k":"V","t":"Grundlagen Physik","r":"Audi 2","w":"Prof. Dr. Hermersdorf","n":"","x":""},{"s":"17:30","e":"19:00","k":"L","t":"Lernwerkstatt online","r":"H12","w":"Hr. Kühl und Hr. Herbst","n":"","x":""}],"2026-11-10":[{"s":"08:15","e":"09:45","k":"V","t":"Bautechnik und Mechanik","r":"H12","w":"Prof. Dr. Opel","n":"","x":""},{"s":"10:00","e":"11:30","k":"U","t":"Bautechnik und Mechanik (MG4)","r":"H12","w":"Prof. Dr. Opel","n":"","x":""},{"s":"12:15","e":"13:45","k":"V","t":"Grundlagen Mathematik","r":"Audi 2","w":"Dipl. Math. Schröder","n":"","x":""},{"s":"14:00","e":"15:30","k":"U","t":"Grundlagen Mathematik","r":"H14","w":"Dipl. Math. Schröder","n":"","x":""},{"s":"15:45","e":"17:15","k":"L","t":"Lernwerkstatt online","r":"H13","w":"Hr. Kühl und Hr. Herbst","n":"","x":""},{"s":"17:30","e":"19:00","k":"L","t":"Lernwerkstatt online","r":"H13","w":"Hr. Kühl und Hr. Herbst","n":"","x":""}],"2026-11-11":[{"s":"08:15","e":"09:45","k":"U","t":"Grundlagen Physik","r":"H12","w":"Prof. Dr. Hermersdorf","n":"","x":""},{"s":"10:00","e":"11:30","k":"V","t":"Grundlagen Informatik","r":"H12","w":"Prof. Dr. Schädler","n":"","x":""},{"s":"14:00","e":"15:30","k":"P","t":"Grundlagen Informatik, Praktikum","r":"DV2 / 2.058","w":"MSc. Harders, MSc. Wriedt","n":"Gruppe 2","x":""},{"s":"15:45","e":"17:15","k":"U","t":"Englisch I","r":"H13, S12","w":"Carolan, Stover","n":"","x":""},{"s":"17:30","e":"19:00","k":"U","t":"Englisch I","r":"H13, S12","w":"Carolan, Stover","n":"","x":""}],"2026-11-12":[{"s":"08:15","e":"09:45","k":"V","t":"Grundlagen Elektrotechnik I","r":"Audi 2","w":"Dipl. Ing. Sterzik","n":"","x":""},{"s":"10:00","e":"11:30","k":"U","t":"Grundlagen Elektrotechnik I","r":"H13","w":"Dipl. Ing. Sterzik","n":"","x":""},{"s":"12:15","e":"13:45","k":"U","t":"Grundlagen Mathematik","r":"H14","w":"Dipl. Math. Schröder","n":"Vertiefung","x":""}],"2026-11-13":[{"s":"10:00","e":"11:30","k":"P","t":"Bautechnik und Mechanik, Praktikum","r":"1.012","w":"Müller-Bengtson","n":"","x":""},{"s":"11:45","e":"13:15","k":"P","t":"Bautechnik und Mechanik, Praktikum","r":"1.012","w":"Müller-Bengtson","n":"","x":""}],"2026-11-16":[{"s":"08:15","e":"09:45","k":"T","t":"Physik Praktikumsbericht Tutorium","r":"H14","w":"Prof. Dr. Hermersdorf","n":"","x":""},{"s":"10:00","e":"11:30","k":"V","t":"Grundlagen Physik","r":"Audi 2","w":"Prof. Dr. Hermersdorf","n":"","x":""},{"s":"12:15","e":"13:45","k":"P","t":"Grundlagen Physik, Praktikum","r":"0.13","w":"Prof. Dr. Hermersdorf, MSc. Wriedt","n":"Versuch 6","x":""},{"s":"14:00","e":"15:30","k":"P","t":"Grundlagen Physik, Praktikum","r":"0.13","w":"Prof. Dr. Hermersdorf, MSc. Wriedt","n":"Versuch 6","x":""},{"s":"15:45","e":"17:15","k":"P","t":"Grundlagen Elektrotechnik I, Praktikum","r":"1.015","w":"Dipl. Ing. Patock, Dipl. Ing. Sterzik","n":"GET I 2/05 · Ohmsche Widerstände","x":""},{"s":"17:30","e":"19:00","k":"P","t":"Grundlagen Elektrotechnik I, Praktikum","r":"1.015","w":"Dipl. Ing. Patock, Dipl. Ing. Sterzik","n":"GET I 2/05 · Ohmsche Widerstände","x":""},{"s":"17:30","e":"19:00","k":"L","t":"Lernwerkstatt online","r":"H12","w":"Hr. Kühl und Hr. Herbst","n":"","x":""}],"2026-11-17":[{"s":"08:15","e":"09:45","k":"V","t":"Bautechnik und Mechanik","r":"H12","w":"Prof. Dr. Opel","n":"","x":""},{"s":"10:00","e":"11:30","k":"U","t":"Bautechnik und Mechanik (MG4)","r":"H12","w":"Prof. Dr. Opel","n":"","x":""},{"s":"12:15","e":"13:45","k":"V","t":"Grundlagen Mathematik","r":"Audi 2","w":"Dipl. Math. Schröder","n":"","x":""},{"s":"14:00","e":"15:30","k":"U","t":"Grundlagen Mathematik","r":"H14","w":"Dipl. Math. Schröder","n":"","x":""},{"s":"15:45","e":"17:15","k":"L","t":"Lernwerkstatt online","r":"H13","w":"Hr. Kühl und Hr. Herbst","n":"","x":""},{"s":"17:30","e":"19:00","k":"L","t":"Lernwerkstatt online","r":"H13","w":"Hr. Kühl und Hr. Herbst","n":"","x":""}],"2026-11-18":[{"s":"08:15","e":"09:45","k":"U","t":"Grundlagen Physik","r":"H12","w":"Prof. Dr. Hermersdorf","n":"","x":""},{"s":"10:00","e":"11:30","k":"V","t":"Grundlagen Informatik","r":"H12","w":"Prof. Dr. Schädler","n":"","x":""},{"s":"14:00","e":"15:30","k":"P","t":"Grundlagen Informatik, Praktikum","r":"DV2 / 2.058","w":"MSc. Harders, MSc. Wriedt","n":"Gruppe 2","x":""},{"s":"15:45","e":"17:15","k":"U","t":"Englisch I","r":"H13, S12","w":"Carolan, Stover","n":"","x":""},{"s":"17:30","e":"19:00","k":"U","t":"Englisch I","r":"H13, S12","w":"Carolan, Stover","n":"","x":""}],"2026-11-19":[{"s":"08:15","e":"09:45","k":"V","t":"Grundlagen Elektrotechnik I","r":"Audi 2","w":"Dipl. Ing. Sterzik","n":"","x":""},{"s":"10:00","e":"11:30","k":"U","t":"Grundlagen Elektrotechnik I","r":"H13","w":"Dipl. Ing. Sterzik","n":"","x":""},{"s":"12:15","e":"13:45","k":"U","t":"Grundlagen Mathematik","r":"H14","w":"Dipl. Math. Schröder","n":"Vertiefung","x":""}],"2026-11-20":[{"s":"10:00","e":"11:30","k":"P","t":"Bautechnik und Mechanik, Praktikum","r":"1.012, H12","w":"Müller-Bengtson","n":"","x":""},{"s":"11:45","e":"13:15","k":"P","t":"Bautechnik und Mechanik, Praktikum","r":"1.012, H12","w":"Müller-Bengtson","n":"","x":""}],"2026-11-23":[{"s":"08:15","e":"09:45","k":"T","t":"Physik Praktikumsbericht Tutorium","r":"H14","w":"Prof. Dr. Hermersdorf","n":"","x":""},{"s":"10:00","e":"11:30","k":"V","t":"Grundlagen Physik","r":"Audi 2","w":"Prof. Dr. Hermersdorf","n":"","x":""},{"s":"17:30","e":"19:00","k":"L","t":"Lernwerkstatt online","r":"H12","w":"Hr. Kühl und Hr. Herbst","n":"","x":""}],"2026-11-24":[{"s":"08:15","e":"09:45","k":"V","t":"Bautechnik und Mechanik","r":"H12","w":"Prof. Dr. Opel","n":"","x":""},{"s":"10:00","e":"11:30","k":"U","t":"Bautechnik und Mechanik (MG4)","r":"H12","w":"Prof. Dr. Opel","n":"","x":""},{"s":"12:15","e":"13:45","k":"V","t":"Grundlagen Mathematik","r":"Audi 2","w":"Dipl. Math. Schröder","n":"","x":""},{"s":"14:00","e":"15:30","k":"U","t":"Grundlagen Mathematik","r":"H14","w":"Dipl. Math. Schröder","n":"","x":""},{"s":"15:45","e":"17:15","k":"L","t":"Lernwerkstatt online","r":"H13","w":"Hr. Kühl und Hr. Herbst","n":"","x":""},{"s":"17:30","e":"19:00","k":"L","t":"Lernwerkstatt online","r":"H13","w":"Hr. Kühl und Hr. Herbst","n":"","x":""}],"2026-11-25":[{"s":"08:15","e":"09:45","k":"U","t":"Grundlagen Physik","r":"H12","w":"Prof. Dr. Hermersdorf","n":"","x":""},{"s":"10:00","e":"11:30","k":"V","t":"Grundlagen Informatik","r":"H12","w":"Prof. Dr. Schädler","n":"","x":""},{"s":"14:00","e":"15:30","k":"P","t":"Grundlagen Informatik, Praktikum","r":"DV2 / 2.058","w":"MSc. Harders, MSc. Wriedt","n":"Gruppe 2","x":""},{"s":"15:45","e":"17:15","k":"U","t":"Englisch I","r":"H13, S12","w":"Carolan, Stover","n":"","x":""},{"s":"17:30","e":"19:00","k":"U","t":"Englisch I","r":"H13, S12","w":"Carolan, Stover","n":"","x":""}],"2026-11-26":[{"s":"08:15","e":"09:45","k":"V","t":"Grundlagen Elektrotechnik I","r":"Audi 2","w":"Dipl. Ing. Sterzik","n":"","x":""},{"s":"10:00","e":"11:30","k":"U","t":"Grundlagen Elektrotechnik I","r":"H13","w":"Dipl. Ing. Sterzik","n":"","x":""},{"s":"12:15","e":"13:45","k":"U","t":"Grundlagen Mathematik","r":"H14","w":"Dipl. Math. Schröder","n":"Vertiefung","x":""}],"2026-11-27":[{"s":"10:00","e":"11:30","k":"P","t":"Bautechnik und Mechanik, Praktikum","r":"1.012","w":"Müller-Bengtson","n":"","x":""},{"s":"11:45","e":"13:15","k":"P","t":"Bautechnik und Mechanik, Praktikum","r":"1.012","w":"Müller-Bengtson","n":"","x":""}],"2026-11-30":[{"s":"08:15","e":"09:45","k":"T","t":"Physik Praktikumsbericht Tutorium","r":"H14","w":"Prof. Dr. Hermersdorf","n":"","x":""},{"s":"10:00","e":"11:30","k":"V","t":"Grundlagen Physik","r":"Audi 2","w":"Prof. Dr. Hermersdorf","n":"","x":""},{"s":"12:15","e":"13:45","k":"P","t":"Grundlagen Physik, Praktikum","r":"0.13","w":"Prof. Dr. Hermersdorf, MSc. Wriedt","n":"Versuch 7","x":""},{"s":"14:00","e":"15:30","k":"P","t":"Grundlagen Physik, Praktikum","r":"0.13","w":"Prof. Dr. Hermersdorf, MSc. Wriedt","n":"Versuch 7","x":""},{"s":"15:45","e":"17:15","k":"P","t":"Grundlagen Elektrotechnik I, Praktikum","r":"1.015","w":"Dipl. Ing. Patock, Dipl. Ing. Sterzik","n":"GET I 1/05 · Oszilloskop","x":""},{"s":"17:30","e":"19:00","k":"P","t":"Grundlagen Elektrotechnik I, Praktikum","r":"1.015","w":"Dipl. Ing. Patock, Dipl. Ing. Sterzik","n":"GET I 1/05 · Oszilloskop","x":""},{"s":"17:30","e":"19:00","k":"L","t":"Lernwerkstatt online","r":"H12","w":"Hr. Kühl und Hr. Herbst","n":"","x":""}],"2026-12-01":[{"s":"08:15","e":"09:45","k":"V","t":"Bautechnik und Mechanik","r":"H12","w":"Prof. Dr. Opel","n":"","x":""},{"s":"10:00","e":"11:30","k":"U","t":"Bautechnik und Mechanik (MG4)","r":"H12","w":"Prof. Dr. Opel","n":"","x":""},{"s":"12:15","e":"13:45","k":"V","t":"Grundlagen Mathematik","r":"Audi 2","w":"Dipl. Math. Schröder","n":"","x":""},{"s":"14:00","e":"15:30","k":"U","t":"Grundlagen Mathematik","r":"H14","w":"Dipl. Math. Schröder","n":"","x":""},{"s":"15:45","e":"17:15","k":"L","t":"Lernwerkstatt online","r":"H13","w":"Hr. Kühl und Hr. Herbst","n":"","x":""},{"s":"17:30","e":"19:00","k":"L","t":"Lernwerkstatt online","r":"H13","w":"Hr. Kühl und Hr. Herbst","n":"","x":""}],"2026-12-02":[{"s":"08:15","e":"09:45","k":"U","t":"Grundlagen Physik","r":"H12","w":"Prof. Dr. Hermersdorf","n":"","x":""},{"s":"10:00","e":"11:30","k":"V","t":"Grundlagen Informatik","r":"H12","w":"Prof. Dr. Schädler","n":"","x":"Raum!!!"},{"s":"14:00","e":"15:30","k":"P","t":"Grundlagen Informatik, Praktikum","r":"DV2 / 2.058","w":"MSc. Harders, MSc. Wriedt","n":"Gruppe 2","x":""},{"s":"15:45","e":"17:15","k":"U","t":"Englisch I","r":"H13, S12","w":"Carolan, Stover","n":"","x":""},{"s":"17:30","e":"19:00","k":"U","t":"Englisch I","r":"H13, S12","w":"Carolan, Stover","n":"","x":""}],"2026-12-03":[{"s":"08:15","e":"09:45","k":"V","t":"Grundlagen Elektrotechnik I","r":"Audi 2","w":"Dipl. Ing. Sterzik","n":"","x":""},{"s":"10:00","e":"11:30","k":"U","t":"Grundlagen Elektrotechnik I","r":"H13","w":"Dipl. Ing. Sterzik","n":"","x":""},{"s":"12:15","e":"13:45","k":"U","t":"Grundlagen Mathematik","r":"H14","w":"Dipl. Math. Schröder","n":"Vertiefung","x":""}],"2026-12-04":[{"s":"10:00","e":"11:30","k":"P","t":"Bautechnik und Mechanik, Praktikum","r":"1.012, H12","w":"Müller-Bengtson","n":"","x":""},{"s":"11:45","e":"13:15","k":"P","t":"Bautechnik und Mechanik, Praktikum","r":"1.012, H12","w":"Müller-Bengtson","n":"","x":""}],"2026-12-07":[{"s":"08:15","e":"09:45","k":"T","t":"Physik Praktikumsbericht Tutorium","r":"H14","w":"Prof. Dr. Hermersdorf","n":"","x":""},{"s":"10:00","e":"11:30","k":"V","t":"Grundlagen Physik","r":"Audi 2","w":"Prof. Dr. Hermersdorf","n":"","x":""},{"s":"17:30","e":"19:00","k":"L","t":"Lernwerkstatt online","r":"H12","w":"Hr. Kühl und Hr. Herbst","n":"","x":""}],"2026-12-08":[{"s":"08:15","e":"09:45","k":"V","t":"Bautechnik und Mechanik","r":"H12","w":"Prof. Dr. Opel","n":"","x":""},{"s":"10:00","e":"11:30","k":"U","t":"Bautechnik und Mechanik (MG4)","r":"H12","w":"Prof. Dr. Opel","n":"","x":""},{"s":"12:15","e":"13:45","k":"V","t":"Grundlagen Mathematik","r":"Audi 2","w":"Dipl. Math. Schröder","n":"","x":""},{"s":"14:00","e":"15:30","k":"U","t":"Grundlagen Mathematik","r":"H14","w":"Dipl. Math. Schröder","n":"","x":""},{"s":"15:45","e":"17:15","k":"L","t":"Lernwerkstatt online","r":"H13","w":"Hr. Kühl und Hr. Herbst","n":"","x":""},{"s":"17:30","e":"19:00","k":"L","t":"Lernwerkstatt online","r":"H13","w":"Hr. Kühl und Hr. Herbst","n":"","x":""}],"2026-12-09":[{"s":"08:15","e":"09:45","k":"U","t":"Grundlagen Physik","r":"H12","w":"Prof. Dr. Hermersdorf","n":"","x":""},{"s":"10:00","e":"11:30","k":"V","t":"Grundlagen Informatik","r":"H12","w":"Prof. Dr. Schädler","n":"","x":""},{"s":"14:00","e":"15:30","k":"P","t":"Grundlagen Informatik, Praktikum","r":"DV2 / 2.058","w":"MSc. Harders, MSc. Wriedt","n":"Gruppe 2","x":""},{"s":"15:45","e":"17:15","k":"U","t":"Englisch I","r":"H13, S12","w":"Carolan, Stover","n":"","x":""},{"s":"17:30","e":"19:00","k":"U","t":"Englisch I","r":"H13, S12","w":"Carolan, Stover","n":"","x":""}],"2026-12-10":[{"s":"08:15","e":"09:45","k":"V","t":"Grundlagen Elektrotechnik I","r":"Audi 2","w":"Dipl. Ing. Sterzik","n":"","x":""},{"s":"10:00","e":"11:30","k":"U","t":"Grundlagen Elektrotechnik I","r":"H13","w":"Dipl. Ing. Sterzik","n":"","x":""},{"s":"12:15","e":"13:45","k":"U","t":"Grundlagen Mathematik","r":"H14","w":"Dipl. Math. Schröder","n":"Vertiefung","x":""}],"2026-12-11":[{"s":"10:00","e":"11:30","k":"P","t":"Bautechnik und Mechanik, Praktikum","r":"1.012, H12","w":"Müller-Bengtson","n":"","x":""},{"s":"11:45","e":"13:15","k":"P","t":"Bautechnik und Mechanik, Praktikum","r":"1.012, H12","w":"Müller-Bengtson","n":"","x":""}],"2026-12-14":[{"s":"08:15","e":"09:45","k":"T","t":"Physik Praktikumsbericht Tutorium","r":"H14","w":"Prof. Dr. Hermersdorf","n":"","x":""},{"s":"10:00","e":"11:30","k":"V","t":"Grundlagen Physik","r":"Audi 2","w":"Prof. Dr. Hermersdorf","n":"","x":""},{"s":"12:15","e":"13:45","k":"P","t":"Grundlagen Physik, Praktikum","r":"0.13","w":"Prof. Dr. Hermersdorf, MSc. Wriedt","n":"Versuch 8","x":""},{"s":"14:00","e":"15:30","k":"P","t":"Grundlagen Physik, Praktikum","r":"0.13","w":"Prof. Dr. Hermersdorf, MSc. Wriedt","n":"Versuch 8","x":""},{"s":"17:30","e":"19:00","k":"L","t":"Lernwerkstatt online","r":"H12","w":"Hr. Kühl und Hr. Herbst","n":"","x":""}],"2026-12-15":[{"s":"08:15","e":"09:45","k":"V","t":"Bautechnik und Mechanik","r":"H12","w":"Prof. Dr. Opel","n":"","x":""},{"s":"10:00","e":"11:30","k":"U","t":"Bautechnik und Mechanik (MG4)","r":"H12","w":"Prof. Dr. Opel","n":"","x":""},{"s":"12:15","e":"13:45","k":"V","t":"Grundlagen Mathematik","r":"Audi 2","w":"Dipl. Math. Schröder","n":"","x":""},{"s":"14:00","e":"15:30","k":"U","t":"Grundlagen Mathematik","r":"H14","w":"Dipl. Math. Schröder","n":"","x":""},{"s":"15:45","e":"17:15","k":"L","t":"Lernwerkstatt online","r":"H13","w":"Hr. Kühl und Hr. Herbst","n":"","x":""},{"s":"17:30","e":"19:00","k":"L","t":"Lernwerkstatt online","r":"H13","w":"Hr. Kühl und Hr. Herbst","n":"","x":""}],"2026-12-16":[{"s":"08:15","e":"09:45","k":"U","t":"Grundlagen Physik","r":"H12","w":"Prof. Dr. Hermersdorf","n":"","x":""},{"s":"10:00","e":"11:30","k":"V","t":"Grundlagen Informatik","r":"H12","w":"Prof. Dr. Schädler","n":"","x":""},{"s":"14:00","e":"15:30","k":"P","t":"Grundlagen Informatik, Praktikum","r":"DV2 / 2.058","w":"MSc. Harders, MSc. Wriedt","n":"Gruppe 2","x":""},{"s":"15:45","e":"17:15","k":"U","t":"Englisch I","r":"H13, S12","w":"Carolan, Stover","n":"","x":""},{"s":"17:30","e":"19:00","k":"U","t":"Englisch I","r":"H13, S12","w":"Carolan, Stover","n":"","x":""}],"2026-12-17":[{"s":"08:15","e":"09:45","k":"V","t":"Grundlagen Elektrotechnik I","r":"Audi 2","w":"Dipl. Ing. Sterzik","n":"","x":""},{"s":"10:00","e":"11:30","k":"U","t":"Grundlagen Elektrotechnik I","r":"H13","w":"Dipl. Ing. Sterzik","n":"","x":""},{"s":"12:15","e":"13:45","k":"U","t":"Grundlagen Mathematik","r":"H14","w":"Dipl. Math. Schröder","n":"Vertiefung","x":""}],"2026-12-18":[{"s":"10:00","e":"11:30","k":"P","t":"Bautechnik und Mechanik, Praktikum","r":"1.012, H12","w":"Müller-Bengtson","n":"","x":""},{"s":"11:45","e":"13:15","k":"P","t":"Bautechnik und Mechanik, Praktikum","r":"1.012, H12","w":"Müller-Bengtson","n":"","x":""}],"2027-01-04":[{"s":"08:15","e":"09:45","k":"T","t":"Physik Praktikumsbericht Tutorium","r":"H14","w":"Prof. Dr. Hermersdorf","n":"","x":""},{"s":"10:00","e":"11:30","k":"V","t":"Grundlagen Physik","r":"Audi 2","w":"Prof. Dr. Hermersdorf","n":"","x":""},{"s":"17:30","e":"19:00","k":"L","t":"Lernwerkstatt online","r":"H12","w":"Hr. Kühl und Hr. Herbst","n":"","x":""}],"2027-01-05":[{"s":"08:15","e":"09:45","k":"V","t":"Bautechnik und Mechanik","r":"H12","w":"Prof. Dr. Opel","n":"","x":""},{"s":"10:00","e":"11:30","k":"U","t":"Bautechnik und Mechanik (MG4)","r":"H12","w":"Prof. Dr. Opel","n":"","x":""},{"s":"12:15","e":"13:45","k":"V","t":"Grundlagen Mathematik","r":"Audi 2","w":"Dipl. Math. Schröder","n":"","x":""},{"s":"14:00","e":"15:30","k":"U","t":"Grundlagen Mathematik","r":"H14","w":"Dipl. Math. Schröder","n":"","x":""},{"s":"15:45","e":"17:15","k":"L","t":"Lernwerkstatt online","r":"H13","w":"Hr. Kühl und Hr. Herbst","n":"","x":""},{"s":"17:30","e":"19:00","k":"L","t":"Lernwerkstatt online","r":"H13","w":"Hr. Kühl und Hr. Herbst","n":"","x":""}],"2027-01-06":[{"s":"08:15","e":"09:45","k":"U","t":"Grundlagen Physik","r":"H12","w":"Prof. Dr. Hermersdorf","n":"","x":""},{"s":"10:00","e":"11:30","k":"V","t":"Grundlagen Informatik","r":"H12","w":"Prof. Dr. Schädler","n":"","x":""},{"s":"14:00","e":"15:30","k":"P","t":"Grundlagen Informatik, Praktikum","r":"DV2 / 2.058","w":"MSc. Harders, MSc. Wriedt","n":"Gruppe 2","x":""},{"s":"15:45","e":"17:15","k":"U","t":"Englisch I","r":"H13, S12","w":"Carolan, Stover","n":"","x":""},{"s":"17:30","e":"19:00","k":"U","t":"Englisch I","r":"H13, S12","w":"Carolan, Stover","n":"","x":""}],"2027-01-07":[{"s":"08:15","e":"09:45","k":"V","t":"Grundlagen Elektrotechnik I","r":"Audi 2","w":"Dipl. Ing. Sterzik","n":"","x":""},{"s":"10:00","e":"11:30","k":"U","t":"Grundlagen Elektrotechnik I","r":"H13","w":"Dipl. Ing. Sterzik","n":"","x":""},{"s":"12:15","e":"13:45","k":"U","t":"Grundlagen Mathematik","r":"H14","w":"Dipl. Math. Schröder","n":"Vertiefung","x":""}],"2027-01-08":[{"s":"10:00","e":"11:30","k":"P","t":"Bautechnik und Mechanik, Praktikum","r":"1.012","w":"Müller-Bengtson","n":"","x":""},{"s":"11:45","e":"13:15","k":"P","t":"Bautechnik und Mechanik, Praktikum","r":"1.012","w":"Müller-Bengtson","n":"","x":""}],"2027-01-11":[{"s":"08:15","e":"09:45","k":"T","t":"Physik Praktikumsbericht Tutorium","r":"H14","w":"Prof. Dr. Hermersdorf","n":"","x":""},{"s":"10:00","e":"11:30","k":"V","t":"Grundlagen Physik","r":"Audi 2","w":"Prof. Dr. Hermersdorf","n":"","x":""},{"s":"12:15","e":"13:45","k":"P","t":"Grundlagen Physik, Praktikum","r":"0.13","w":"Prof. Dr. Hermersdorf, MSc. Wriedt","n":"Versuch 1","x":""},{"s":"14:00","e":"15:30","k":"P","t":"Grundlagen Physik, Praktikum","r":"0.13","w":"Prof. Dr. Hermersdorf, MSc. Wriedt","n":"Versuch 1","x":""},{"s":"17:30","e":"19:00","k":"L","t":"Lernwerkstatt online","r":"H12","w":"Hr. Kühl und Hr. Herbst","n":"","x":""}],"2027-01-12":[{"s":"08:15","e":"09:45","k":"V","t":"Bautechnik und Mechanik","r":"H12","w":"Prof. Dr. Opel","n":"","x":""},{"s":"10:00","e":"11:30","k":"U","t":"Bautechnik und Mechanik (MG4)","r":"H12","w":"Prof. Dr. Opel","n":"","x":""},{"s":"12:15","e":"13:45","k":"V","t":"Grundlagen Mathematik","r":"Audi 2","w":"Dipl. Math. Schröder","n":"","x":""},{"s":"14:00","e":"15:30","k":"U","t":"Grundlagen Mathematik","r":"H14","w":"Dipl. Math. Schröder","n":"","x":""},{"s":"15:45","e":"17:15","k":"L","t":"Lernwerkstatt online","r":"H13","w":"Hr. Kühl und Hr. Herbst","n":"","x":""},{"s":"17:30","e":"19:00","k":"L","t":"Lernwerkstatt online","r":"H13","w":"Hr. Kühl und Hr. Herbst","n":"","x":""}],"2027-01-13":[{"s":"08:15","e":"09:45","k":"U","t":"Grundlagen Physik","r":"H12","w":"Prof. Dr. Hermersdorf","n":"","x":""},{"s":"10:00","e":"11:30","k":"V","t":"Grundlagen Informatik","r":"H12","w":"Prof. Dr. Schädler","n":"","x":""},{"s":"14:00","e":"15:30","k":"P","t":"Grundlagen Informatik, Praktikum","r":"DV2 / 2.058","w":"MSc. Harders, MSc. Wriedt","n":"Gruppe 2","x":""},{"s":"15:45","e":"17:15","k":"U","t":"Englisch I","r":"H13, S12","w":"Carolan, Stover","n":"","x":""},{"s":"17:30","e":"19:00","k":"U","t":"Englisch I","r":"H13, S12","w":"Carolan, Stover","n":"","x":""}],"2027-01-14":[{"s":"08:15","e":"09:45","k":"V","t":"Grundlagen Elektrotechnik I","r":"Audi 2","w":"Dipl. Ing. Sterzik","n":"","x":""},{"s":"10:00","e":"11:30","k":"U","t":"Grundlagen Elektrotechnik I","r":"H13","w":"Dipl. Ing. Sterzik","n":"","x":""},{"s":"12:15","e":"13:45","k":"U","t":"Grundlagen Mathematik","r":"H14","w":"Dipl. Math. Schröder","n":"Vertiefung","x":""}],"2027-01-15":[{"s":"10:00","e":"11:30","k":"P","t":"Bautechnik und Mechanik, Praktikum","r":"1.012","w":"Müller-Bengtson","n":"","x":""},{"s":"11:45","e":"13:15","k":"P","t":"Bautechnik und Mechanik, Praktikum","r":"1.012","w":"Müller-Bengtson","n":"","x":""}]}};
+(function () {
+  var DAY = 86400000;
+  var WEEKS = PLAN.weeks;
+  var DNAMES = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag"];
+  var CHIP = { V: "V", U: "Ü", P: "P", X: "M", T: "T", L: "L" };
+  var VOLTAG = { T: "Tutorium", L: "Lernwerkstatt" };
+
+  function parse(iso) { var p = iso.split("-"); return Date.UTC(+p[0], +p[1] - 1, +p[2]); }
+  function pad(n) { return ("0" + n).slice(-2); }
+  function isoOf(ms) { var d = new Date(ms); return d.getUTCFullYear() + "-" + pad(d.getUTCMonth() + 1) + "-" + pad(d.getUTCDate()); }
+  function dm(ms) { var d = new Date(ms); return pad(d.getUTCDate()) + "." + pad(d.getUTCMonth() + 1) + "."; }
+  function el(tag, cls, text) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text) n.textContent = text;
+    return n;
+  }
+  function defaultIdx(todayMs) {
+    var ref = todayMs, wd = (new Date(ref).getUTCDay() + 6) % 7;
+    if (wd >= 5) ref += (7 - wd) * DAY;
+    for (var i = 0; i < WEEKS.length; i++) {
+      var s = parse(WEEKS[i].s);
+      if (ref >= s && ref < s + 7 * DAY) return i;
+    }
+    for (var j = 0; j < WEEKS.length; j++) { if (parse(WEEKS[j].s) > ref) return j; }
+    return WEEKS.length - 1;
+  }
+
+  var now = new Date();
+  var todayMs = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+  var idx = WEEKS.length ? defaultIdx(todayMs) : 0;
+  var showVol = true;
+  try { showVol = localStorage.getItem("sp-vol") !== "0"; } catch (e) {}
+  var $ = function (id) { return document.getElementById(id); };
+  var volBox = $("vol");
+  volBox.checked = showVol;
+
+  function renderEvent(ev) {
+    var vol = ev.k === "T" || ev.k === "L";
+    var n = el("article", "ev " + (vol ? "vol" : ev.k === "X" ? "neutral" : "must"));
+    n.setAttribute("data-k", ev.k);
+    var row = el("div", "row");
+    if (!vol) row.appendChild(el("span", "chip", CHIP[ev.k]));
+    row.appendChild(el("span", "time", ev.s + "–" + ev.e));
+    if (vol) row.appendChild(el("span", "tag", VOLTAG[ev.k]));
+    n.appendChild(row);
+    n.appendChild(el("div", "title", ev.t));
+    var meta = [ev.r, ev.w].filter(Boolean).join(" · ");
+    if (meta) n.appendChild(el("div", "meta", meta));
+    if (ev.n) n.appendChild(el("div", "note", ev.n));
+    if (ev.x) n.appendChild(el("div", "warn", ev.x));
+    return n;
+  }
+
+  function render() {
+    var box = $("days");
+    box.textContent = "";
+    if (!WEEKS.length) { $("wk").textContent = "Keine Wochen im Plan"; return; }
+    var w = WEEKS[idx], start = parse(w.s);
+    $("wk").textContent = w.nr + ". Studienwoche · KW " + w.kw;
+    $("wrange").textContent = dm(start) + " – " + dm(start + 6 * DAY) + new Date(start + 6 * DAY).getUTCFullYear();
+    $("prev").disabled = idx === 0;
+    $("next").disabled = idx === WEEKS.length - 1;
+
+    var notes = [];
+    (w.notes || []).forEach(function (t) { notes.push("Hinweis im Plan: " + t + "."); });
+    if (idx > 0) {
+      var prevEnd = parse(WEEKS[idx - 1].s) + 7 * DAY;
+      if (start > prevEnd) notes.push("Davor: vom " + dm(prevEnd) + " bis " + dm(start - DAY) + " enthält der Plan keine Termine.");
+    }
+    var wn = $("wnote");
+    wn.hidden = notes.length === 0;
+    wn.textContent = notes.join(" ");
+
+    for (var d = 0; d < 5; d++) {
+      var ms = start + d * DAY, iso = isoOf(ms);
+      var col = el("section", "day" + (ms === todayMs ? " is-today" : ""));
+      var head = el("div", "dayhead");
+      head.appendChild(el("span", "dname", DNAMES[d]));
+      head.appendChild(el("span", "ddate", dm(ms)));
+      if (ms === todayMs) head.appendChild(el("span", "badge", "Heute"));
+      col.appendChild(head);
+      var evs = (PLAN.events[iso] || []).filter(function (ev) { return showVol || (ev.k !== "T" && ev.k !== "L"); });
+      if (!evs.length) col.appendChild(el("p", "free", "Keine Termine"));
+      evs.forEach(function (ev) { col.appendChild(renderEvent(ev)); });
+      box.appendChild(col);
+    }
+  }
+
+  $("prev").addEventListener("click", function () { if (idx > 0) { idx--; render(); } });
+  $("next").addEventListener("click", function () { if (idx < WEEKS.length - 1) { idx++; render(); } });
+  $("today").addEventListener("click", function () { idx = defaultIdx(todayMs); render(); });
+  volBox.addEventListener("change", function () {
+    showVol = volBox.checked;
+    try { localStorage.setItem("sp-vol", showVol ? "1" : "0"); } catch (e) {}
+    render();
+  });
+  render();
+})();
+</script>
+</body>
+</html>
