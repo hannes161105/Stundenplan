@@ -89,6 +89,13 @@ h1 { margin: 0; font: 800 clamp(28px, 6vw, 40px)/1.05 var(--font-display); lette
 .ev.vol { border: 1px dashed var(--dashed); padding: 6px 10px; color: var(--muted); }
 .ev.vol[data-f] { border-color: color-mix(in srgb, var(--k) 60%, transparent); background: color-mix(in srgb, var(--kbg) 45%, var(--surface)); }
 .ev.vol[data-f] .tag, .ev.vol[data-f] .title { color: var(--k); }
+.toggles { display: grid; gap: 6px; justify-items: end; }
+.gap { display: grid; gap: 2px; padding: 5px 10px; border-radius: 4px; color: var(--muted); border-left: 2px solid var(--line); margin: 1px 0 1px 6px; }
+.gap .gl { font: 600 11px var(--font-mono); letter-spacing: .06em; text-transform: uppercase; }
+.gap .gt { font-size: 12.5px; }
+.gap.live { border-left-color: var(--accent); color: var(--ink); }
+.gap.live .gl { color: var(--accent); }
+.gap.past { opacity: .5; }
 .ev.past { opacity: .5; }
 .ev.live { box-shadow: 0 0 0 1.5px var(--k, var(--accent)); }
 .prog { display: grid; gap: 4px; margin-top: 6px; }
@@ -121,7 +128,10 @@ h1 { margin: 0; font: 800 clamp(28px, 6vw, 40px)/1.05 var(--font-display); lette
       <p class="eyebrow">Green Technology B.Eng. · 1. Semester · Gruppe GT</p>
       <h1>Mein Stundenplan</h1>
     </div>
-    <label class="toggle"><input type="checkbox" id="vol" checked> Freiwillige Termine anzeigen</label>
+    <div class="toggles">
+      <label class="toggle"><input type="checkbox" id="vol" checked> Freiwillige Termine anzeigen</label>
+      <label class="toggle"><input type="checkbox" id="gap" checked> Pausen anzeigen</label>
+    </div>
   </header>
 
   <nav class="weeknav" aria-label="Woche wählen">
@@ -150,7 +160,7 @@ h1 { margin: 0; font: 800 clamp(28px, 6vw, 40px)/1.05 var(--font-display); lette
   </section>
 
   <p class="foot">
-    Stand des Originalplans: 11.10.2026, 0:10 Uhr. Diese Seite wurde am 11.10.2026, 22:06 Uhr aus dem Originalplan erzeugt.
+    Stand des Originalplans: 11.10.2026, 0:10 Uhr. Diese Seite wurde am 11.10.2026, 22:14 Uhr aus dem Originalplan erzeugt.
     Alle Angaben ohne Gewähr, maßgeblich ist der
     <a href="https://moodle.fh-westkueste.de/sked/jahrg%C3%A4ngefbw/Green%20Technology%20(B.Eng.)%202026.html" target="_blank" rel="noopener">Originalplan</a>.
   </p>
@@ -202,6 +212,10 @@ var PLAN = {"weeks":[{"s":"2026-10-12","nr":3,"kw":42,"notes":[]},{"s":"2026-10-
   var $ = function (id) { return document.getElementById(id); };
   var volBox = $("vol");
   volBox.checked = showVol;
+  var showGap = true;
+  try { showGap = localStorage.getItem("sp-gap") !== "0"; } catch (e) {}
+  var gapBox = $("gap");
+  gapBox.checked = showGap;
 
   function renderEvent(ev) {
     var vol = ev.k === "T" || ev.k === "L" || ev.k === "W";
@@ -221,6 +235,20 @@ var PLAN = {"weeks":[{"s":"2026-10-12","nr":3,"kw":42,"notes":[]},{"s":"2026-10-
     if (ev.n) n.appendChild(el("div", "note", ev.n));
     if (ev.x) n.appendChild(el("div", "warn", ev.x));
     return n;
+  }
+
+  function hhmm(m) { return pad(Math.floor(m / 60)) + ":" + pad(m % 60); }
+  function dauer(m) {
+    var h = Math.floor(m / 60), r = m % 60;
+    return h ? h + " Std." + (r ? " " + r + " Min." : "") : r + " Min.";
+  }
+  function renderGap(a, b) {
+    var g = el("div", "gap");
+    g.setAttribute("data-s", hhmm(a));
+    g.setAttribute("data-e", hhmm(b));
+    g.appendChild(el("span", "gl", "Pause"));
+    g.appendChild(el("span", "gt", hhmm(a) + "–" + hhmm(b) + " · " + dauer(b - a)));
+    return g;
   }
 
   function render() {
@@ -253,7 +281,13 @@ var PLAN = {"weeks":[{"s":"2026-10-12","nr":3,"kw":42,"notes":[]},{"s":"2026-10-
       col.appendChild(head);
       var evs = (PLAN.events[iso] || []).filter(function (ev) { return showVol || (ev.k !== "T" && ev.k !== "L" && ev.k !== "W"); });
       if (!evs.length) col.appendChild(el("p", "free", "Keine Termine"));
-      evs.forEach(function (ev) { col.appendChild(renderEvent(ev)); });
+      var maxEnd = null;
+      evs.forEach(function (ev) {
+        var s = mins(ev.s), e = mins(ev.e);
+        if (showGap && maxEnd !== null && s - maxEnd >= 30) col.appendChild(renderGap(maxEnd, s));
+        col.appendChild(renderEvent(ev));
+        if (maxEnd === null || e > maxEnd) maxEnd = e;
+      });
       box.appendChild(col);
     }
   }
@@ -271,12 +305,26 @@ var PLAN = {"weeks":[{"s":"2026-10-12","nr":3,"kw":42,"notes":[]},{"s":"2026-10-
     var col = document.querySelector(".day.is-today");
     if (!col) return;
     var nowMin = nw.getHours() * 60 + nw.getMinutes() + nw.getSeconds() / 60;
-    var cards = col.querySelectorAll(".ev");
-    var running = false, anchor = null;
+    var cards = col.querySelectorAll(".ev, .gap");
+    var running = false, anchor = null, gapNow = null;
     for (var j = 0; j < cards.length; j++) {
       var c = cards[j], s = mins(c.getAttribute("data-s")), e = mins(c.getAttribute("data-e"));
+      var isGap = c.classList.contains("gap");
       c.classList.remove("past", "live");
       if (nowMin >= e) { c.classList.add("past"); continue; }
+      if (isGap) {
+        if (nowMin >= s) {
+          gapNow = c;
+          c.classList.add("live");
+          var gl = Math.max(1, Math.ceil(e - nowMin));
+          var gp = el("div", "prog");
+          var gb = el("i"); gb.style.width = Math.min(100, Math.max(0, (nowMin - s) / (e - s) * 100)) + "%";
+          gp.appendChild(gb);
+          gp.appendChild(el("span", "", gl >= 60 ? "noch " + Math.floor(gl / 60) + " Std. " + (gl % 60) + " Min." : "noch " + gl + " Min."));
+          c.appendChild(gp);
+        }
+        continue;
+      }
       if (nowMin >= s) {
         running = true;
         c.classList.add("live");
@@ -289,12 +337,18 @@ var PLAN = {"weeks":[{"s":"2026-10-12","nr":3,"kw":42,"notes":[]},{"s":"2026-10-
         c.appendChild(pr);
       } else if (!anchor) anchor = c;
     }
-    if (!running && cards.length) {
+    if (!running && !gapNow && cards.length) {
       var line = el("div", "nowline", "Jetzt " + pad(nw.getHours()) + ":" + pad(nw.getMinutes()));
-      if (anchor) col.insertBefore(line, anchor); else col.appendChild(line);
+      if (anchor) col.insertBefore(line, anchor);
+      else col.appendChild(line);
     }
   }
 
+  gapBox.addEventListener("change", function () {
+    showGap = gapBox.checked;
+    try { localStorage.setItem("sp-gap", showGap ? "1" : "0"); } catch (e) {}
+    render();
+  });
   $("prev").addEventListener("click", function () { if (idx > 0) { idx--; render(); } });
   $("next").addEventListener("click", function () { if (idx < WEEKS.length - 1) { idx++; render(); } });
   $("today").addEventListener("click", function () { idx = defaultIdx(todayMs); render(); });
