@@ -76,6 +76,18 @@ BEKANNTE_TITEL = {
     ("Ü", "Grundlagen Physik EI"), ("Ü", "Lernwerkstatt online"),
 }
 
+# Fachfarben: erster Treffer im Titel entscheidet.
+FAECHER = [("Physik", "physik"), ("Mathematik", "mathe"), ("Informatik", "info"),
+           ("Elektrotechnik", "et"), ("Bautechnik", "bau"), ("Englisch", "englisch")]
+
+
+def fach_von(titel):
+    for wort, fach in FAECHER:
+        if wort in titel:
+            return fach
+    return ""
+
+
 # Gruppenkürzel am Titelende, die auf der Seite weggelassen werden.
 GRUPPEN_SUFFIX = re.compile(r"\s+(?:EI|GT|GPE|WING)(?:/(?:EI|GT|GPE|WING))*$")
 
@@ -106,6 +118,8 @@ def entscheide(ev):
         if ev["s"] != INFORMATIK_PRAKTIKUM_START:
             return None
         return ("P", "Grundlagen Informatik, Praktikum", INFORMATIK_GRUPPE)
+    if pre == "Ü" and titel.startswith("Grundlagen Mathematik") and "Vertiefung" in ev["remark"]:
+        return ("W", "Grundlagen Mathematik, Vertiefung", "")
     if key == ("SV", "Mentoring Program"):
         return ("X", "SV Mentoring Program", "")
 
@@ -180,7 +194,7 @@ def parse_cell(lines):
 
 
 def build_plan(stand, weeks, raw_events):
-    order = {"V": 0, "U": 1, "P": 2, "X": 3, "T": 4, "L": 5}
+    order = {"V": 0, "U": 1, "P": 2, "X": 3, "T": 4, "L": 5, "W": 4}
     events = {}
     for ev in raw_events:
         res = entscheide(ev)
@@ -189,7 +203,9 @@ def build_plan(stand, weeks, raw_events):
         art, titel, hinweis = res
         note, warn, lecturer = hinweis, "", ev["lecturer"]
         if ev["remark"]:
-            if art == "L":
+            if art == "W":
+                pass
+            elif art == "L":
                 lecturer = ev["remark"]
             elif "!" in ev["remark"]:
                 warn = ev["remark"]
@@ -197,7 +213,7 @@ def build_plan(stand, weeks, raw_events):
                 note = (note + " · " if note else "") + ev["remark"]
         events.setdefault(ev["date"], []).append(
             {"s": ev["s"], "e": ev["e"], "k": art, "t": titel, "r": ev["room"],
-             "w": lecturer, "n": note, "x": warn})
+             "w": lecturer, "n": note, "x": warn, "f": fach_von(titel)})
     for day in events.values():
         day.sort(key=lambda x: (x["s"], order[x["k"]], x["t"]))
     return {"weeks": weeks, "events": events}
@@ -215,43 +231,17 @@ HEAD_PART = r'''<title>Mein Stundenplan GT</title>
   --font-display: "Archivo", "Arial Narrow", Arial, sans-serif;
   --font-body: "Archivo", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
-
-  --bg: #ECF1EE;
-  --surface: #FFFFFF;
-  --ink: #14221C;
-  --muted: #566861;
-  --line: #C7D4CE;
-  --accent: #0E6B55;
-  --on-accent: #FFFFFF;
-  --dashed: #A7B6AF;
-  --alert: #B3261E;
-
-  --v: #0E6B55;  --v-bg: #DCEEE7;
-  --u: #284F94;  --u-bg: #E0E8F6;
-  --p: #98500A;  --p-bg: #F6E8D5;
-  --on-k: #FFFFFF;
-  color-scheme: light;
-}
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --bg: #0D1511; --surface: #14201B; --ink: #E3ECE7; --muted: #94A69E; --line: #2A3A33;
-    --accent: #5FC3A5; --on-accent: #0D1511; --dashed: #3F5049; --alert: #FF8F86;
-    --v: #6FD1B2; --v-bg: #16342A;
-    --u: #92B4F2; --u-bg: #192741;
-    --p: #F0B46C; --p-bg: #3A2713;
-    --on-k: #0D1511;
-    color-scheme: dark;
-  }
-}
-:root[data-theme="dark"] {
-  --bg: #0D1511; --surface: #14201B; --ink: #E3ECE7; --muted: #94A69E; --line: #2A3A33;
-  --accent: #5FC3A5; --on-accent: #0D1511; --dashed: #3F5049; --alert: #FF8F86;
-  --v: #6FD1B2; --v-bg: #16342A;
-  --u: #92B4F2; --u-bg: #192741;
-  --p: #F0B46C; --p-bg: #3A2713;
-  --on-k: #0D1511;
+  --bg: #0E1312; --surface: #161C1B; --ink: #E6ECEA; --muted: #9AA8A3; --line: #2B3633;
+  --accent: #7FC8B4; --on-accent: #0E1312; --dashed: #44524D; --alert: #FF8F86;
+  --on-k: #0E1312;
   color-scheme: dark;
 }
+[data-f="physik"]   { --k: #AEB7C0; --kbg: #272D32; }
+[data-f="mathe"]    { --k: #6FD1A0; --kbg: #163A2C; }
+[data-f="info"]     { --k: #8AD0F5; --kbg: #15354B; }
+[data-f="et"]       { --k: #D9B65C; --kbg: #382E12; }
+[data-f="bau"]      { --k: #D99A82; --kbg: #3D241B; }
+[data-f="englisch"] { --k: #D79AB3; --kbg: #3E2230; }
 
 * { box-sizing: border-box; }
 body {
@@ -300,11 +290,11 @@ h1 { margin: 0; font: 800 clamp(28px, 6vw, 40px)/1.05 var(--font-display); lette
 .free { margin: 6px 0; color: var(--muted); font-size: 14px; }
 
 .ev { display: grid; gap: 3px; min-width: 0; padding: 9px 10px; border-radius: 4px; }
-.ev[data-k="V"] { --k: var(--v); --kbg: var(--v-bg); }
-.ev[data-k="U"] { --k: var(--u); --kbg: var(--u-bg); }
-.ev[data-k="P"] { --k: var(--p); --kbg: var(--p-bg); }
 .ev[data-k="X"] { --k: var(--muted); --kbg: var(--surface); }
-.ev.must { background: var(--kbg); }
+.ev.must { background: color-mix(in srgb, var(--kbg) 55%, var(--surface)); border: 1.5px solid transparent; }
+.ev[data-k="U"] .chip { background: transparent; color: var(--k); box-shadow: inset 0 0 0 1.5px var(--k); }
+.ev[data-k="P"] { border-color: color-mix(in srgb, var(--k) 42%, transparent); }
+.ev[data-k="P"] .chip { border-radius: 50%; }
 .ev.neutral { border: 1px solid var(--line); }
 .ev .row { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .chip { flex: none; width: 22px; height: 22px; display: inline-grid; place-items: center; border-radius: 3px; font-size: 12px; font-weight: 800; font-style: normal; background: var(--k); color: var(--on-k); }
@@ -316,6 +306,19 @@ h1 { margin: 0; font: 800 clamp(28px, 6vw, 40px)/1.05 var(--font-display); lette
 .warn { font-size: 12.5px; font-weight: 700; color: var(--alert); }
 
 .ev.vol { border: 1px dashed var(--dashed); padding: 6px 10px; color: var(--muted); }
+.ev.vol[data-f] { border-color: color-mix(in srgb, var(--k) 60%, transparent); background: color-mix(in srgb, var(--kbg) 45%, var(--surface)); }
+.ev.vol[data-f] .tag, .ev.vol[data-f] .title { color: var(--k); }
+.ev.past { opacity: .5; }
+.ev.live { box-shadow: 0 0 0 1.5px var(--k, var(--accent)); }
+.prog { display: grid; gap: 4px; margin-top: 6px; }
+.prog > i { display: block; height: 5px; border-radius: 3px; background: var(--k, var(--accent)); }
+.prog { grid-template-columns: 1fr; }
+.prog::before { content: ""; grid-area: 1 / 1; height: 5px; border-radius: 3px; background: color-mix(in srgb, var(--k, var(--accent)) 22%, transparent); }
+.prog > i { grid-area: 1 / 1; }
+.prog > span { font-size: 12px; font-weight: 600; color: var(--k, var(--accent)); font-family: var(--font-mono); }
+.nowline { display: flex; align-items: center; gap: 8px; font: 600 11px var(--font-mono); color: var(--alert); }
+.nowline::before, .nowline::after { content: ""; height: 1.5px; background: var(--alert); flex: 1; opacity: .8; }
+.nowline::after { flex: 3; }
 .ev.vol .title { font-weight: 500; font-size: 13.5px; }
 .ev.vol .time { font-size: 12px; }
 .ev.vol .tag { margin-left: auto; font-size: 11px; letter-spacing: .05em; text-transform: uppercase; }
@@ -323,6 +326,7 @@ h1 { margin: 0; font: 800 clamp(28px, 6vw, 40px)/1.05 var(--font-display); lette
 .legend { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 22px; font-size: 13px; color: var(--muted); }
 .legend span { display: inline-flex; align-items: center; gap: 6px; }
 .legend .chip { width: 20px; height: 20px; font-size: 11px; }
+.legend .sw { width: 14px; height: 14px; border-radius: 3px; background: var(--k); }
 .legend .dash { width: 20px; height: 20px; border: 1px dashed var(--dashed); border-radius: 3px; }
 .foot { margin-top: 18px; font-size: 13px; color: var(--muted); max-width: 70ch; }
 .foot a { color: var(--accent); }
@@ -349,11 +353,19 @@ BODY_PART = r'''<div class="wrap">
 
   <main class="days" id="days"></main>
 
-  <section class="legend" aria-label="Legende">
-    <span><i class="chip" style="--k:var(--v)">V</i> Vorlesung</span>
-    <span><i class="chip" style="--k:var(--u)">Ü</i> Übung</span>
-    <span><i class="chip" style="--k:var(--p)">P</i> Praktikum</span>
-    <span><i class="dash"></i> Freiwillig (Tutorium, Lernwerkstatt)</span>
+  <section class="legend" aria-label="Fächer">
+    <span><i class="sw" data-f="physik"></i> Physik</span>
+    <span><i class="sw" data-f="mathe"></i> Mathematik</span>
+    <span><i class="sw" data-f="info"></i> Informatik</span>
+    <span><i class="sw" data-f="et"></i> Elektrotechnik</span>
+    <span><i class="sw" data-f="bau"></i> Bautechnik und Mechanik</span>
+    <span><i class="sw" data-f="englisch"></i> Englisch</span>
+  </section>
+  <section class="legend" aria-label="Terminarten">
+    <span><i class="chip" style="--k:var(--muted)">V</i> Vorlesung (gefüllt)</span>
+    <span><i class="chip" data-k="U" style="--k:var(--muted);background:transparent;color:var(--muted);box-shadow:inset 0 0 0 1.5px var(--muted)">Ü</i> Übung (Ring)</span>
+    <span><i class="chip" style="--k:var(--muted);border-radius:50%">P</i> Praktikum (rund, mit Rahmen)</span>
+    <span><i class="dash"></i> Freiwillig (Tutorium, Lernwerkstatt, Vertiefung)</span>
   </section>
 
   <p class="foot">
@@ -369,8 +381,8 @@ var PLAN = __PLAN_JSON__;
   var DAY = 86400000;
   var WEEKS = PLAN.weeks;
   var DNAMES = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag"];
-  var CHIP = { V: "V", U: "Ü", P: "P", X: "M", T: "T", L: "L" };
-  var VOLTAG = { T: "Tutorium", L: "Lernwerkstatt" };
+  var CHIP = { V: "V", U: "Ü", P: "P", X: "M", T: "T", L: "L", W: "W" };
+  var VOLTAG = { T: "Tutorium", L: "Lernwerkstatt", W: "Vertiefung" };
 
   function parse(iso) { var p = iso.split("-"); return Date.UTC(+p[0], +p[1] - 1, +p[2]); }
   function pad(n) { return ("0" + n).slice(-2); }
@@ -393,8 +405,16 @@ var PLAN = __PLAN_JSON__;
     return WEEKS.length - 1;
   }
 
-  var now = new Date();
-  var todayMs = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+  // Zum Testen: ?jetzt=2026-10-14T10:30 setzt eine feste Uhrzeit.
+  function getNow() {
+    try {
+      var q = new URLSearchParams(location.search).get("jetzt");
+      if (q) { var t = new Date(q); if (!isNaN(t)) return t; }
+    } catch (e) {}
+    return new Date();
+  }
+  function dayOf(d) { return Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()); }
+  var todayMs = dayOf(getNow());
   var idx = WEEKS.length ? defaultIdx(todayMs) : 0;
   var showVol = true;
   try { showVol = localStorage.getItem("sp-vol") !== "0"; } catch (e) {}
@@ -403,9 +423,12 @@ var PLAN = __PLAN_JSON__;
   volBox.checked = showVol;
 
   function renderEvent(ev) {
-    var vol = ev.k === "T" || ev.k === "L";
+    var vol = ev.k === "T" || ev.k === "L" || ev.k === "W";
     var n = el("article", "ev " + (vol ? "vol" : ev.k === "X" ? "neutral" : "must"));
     n.setAttribute("data-k", ev.k);
+    if (ev.f && (!vol || ev.k === "W")) n.setAttribute("data-f", ev.f);
+    n.setAttribute("data-s", ev.s);
+    n.setAttribute("data-e", ev.e);
     var row = el("div", "row");
     if (!vol) row.appendChild(el("span", "chip", CHIP[ev.k]));
     row.appendChild(el("span", "time", ev.s + "–" + ev.e));
@@ -447,10 +470,47 @@ var PLAN = __PLAN_JSON__;
       head.appendChild(el("span", "ddate", dm(ms)));
       if (ms === todayMs) head.appendChild(el("span", "badge", "Heute"));
       col.appendChild(head);
-      var evs = (PLAN.events[iso] || []).filter(function (ev) { return showVol || (ev.k !== "T" && ev.k !== "L"); });
+      var evs = (PLAN.events[iso] || []).filter(function (ev) { return showVol || (ev.k !== "T" && ev.k !== "L" && ev.k !== "W"); });
       if (!evs.length) col.appendChild(el("p", "free", "Keine Termine"));
       evs.forEach(function (ev) { col.appendChild(renderEvent(ev)); });
       box.appendChild(col);
+    }
+  }
+
+  function mins(hhmm) { var a = hhmm.split(":"); return +a[0] * 60 + +a[1]; }
+
+  // Zeigt in der Spalte von heute, wo der Tag gerade steht: Vergangenes blasser,
+  // laufende Veranstaltung mit Fortschrittsbalken und Restzeit, sonst eine "Jetzt"-Linie.
+  function tick() {
+    var nw = getNow();
+    var t = dayOf(nw);
+    if (t !== todayMs) { todayMs = t; render(); return; }
+    var old = document.querySelectorAll(".nowline, .prog");
+    for (var i = 0; i < old.length; i++) old[i].parentNode.removeChild(old[i]);
+    var col = document.querySelector(".day.is-today");
+    if (!col) return;
+    var nowMin = nw.getHours() * 60 + nw.getMinutes() + nw.getSeconds() / 60;
+    var cards = col.querySelectorAll(".ev");
+    var running = false, anchor = null;
+    for (var j = 0; j < cards.length; j++) {
+      var c = cards[j], s = mins(c.getAttribute("data-s")), e = mins(c.getAttribute("data-e"));
+      c.classList.remove("past", "live");
+      if (nowMin >= e) { c.classList.add("past"); continue; }
+      if (nowMin >= s) {
+        running = true;
+        c.classList.add("live");
+        var left = Math.max(1, Math.ceil(e - nowMin));
+        var pr = el("div", "prog");
+        var bar = el("i"); bar.style.width = Math.min(100, Math.max(0, (nowMin - s) / (e - s) * 100)) + "%";
+        pr.appendChild(bar);
+        var lab = el("span", "", left >= 60 ? "noch " + Math.floor(left / 60) + " Std. " + (left % 60) + " Min." : "noch " + left + " Min.");
+        pr.appendChild(lab);
+        c.appendChild(pr);
+      } else if (!anchor) anchor = c;
+    }
+    if (!running && cards.length) {
+      var line = el("div", "nowline", "Jetzt " + pad(nw.getHours()) + ":" + pad(nw.getMinutes()));
+      if (anchor) col.insertBefore(line, anchor); else col.appendChild(line);
     }
   }
 
@@ -462,7 +522,10 @@ var PLAN = __PLAN_JSON__;
     try { localStorage.setItem("sp-vol", showVol ? "1" : "0"); } catch (e) {}
     render();
   });
+  var _render = render;
+  render = function () { _render(); tick(); };
   render();
+  setInterval(tick, 30000);
 })();
 </script>
 '''
