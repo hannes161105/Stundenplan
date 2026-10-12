@@ -3,6 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="theme-color" content="#0E1312">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Stundenplan">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
 <title>Mein Stundenplan GT</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
@@ -160,7 +167,7 @@ h1 { margin: 0; font: 800 clamp(28px, 6vw, 40px)/1.05 var(--font-display); lette
   </section>
 
   <p class="foot">
-    Stand des Originalplans: 12.10.2026, 9:35 Uhr. Diese Seite wurde am 12.10.2026, 10:44 Uhr aus dem Originalplan erzeugt.
+    Stand des Originalplans: 12.10.2026, 9:35 Uhr. Diese Seite wurde am 12.10.2026, 10:50 Uhr aus dem Originalplan erzeugt.
     Alle Angaben ohne Gewähr, maßgeblich ist der
     <a href="https://moodle.fh-westkueste.de/sked/jahrg%C3%A4ngefbw/Green%20Technology%20(B.Eng.)%202026.html" target="_blank" rel="noopener">Originalplan</a>.
   </p>
@@ -363,5 +370,6 @@ var PLAN = {"weeks":[{"s":"2026-10-12","nr":3,"kw":42,"notes":[]},{"s":"2026-10-
   setInterval(tick, 30000);
 })();
 </script>
+<script>if ("serviceWorker" in navigator && location.protocol.indexOf("http") === 0) navigator.serviceWorker.register("sw.js").catch(function () {});</script>
 </body>
 </html>
