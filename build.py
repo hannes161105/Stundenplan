@@ -281,6 +281,7 @@ h1 { margin: 0; font: 800 clamp(28px, 6vw, 40px)/1.05 var(--font-display); lette
 .weeknote { margin: 4px 0 0; font-size: 13px; color: var(--muted); }
 
 .days { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 12px; margin-top: 14px; }
+@media (max-width: 1099px) { .day.is-past { display: none; } }
 @media (min-width: 1100px) { .days { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
 .day { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 10px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
 .day.is-today { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
@@ -380,7 +381,8 @@ BODY_PART = r'''<div class="wrap">
   </section>
 
   <p class="foot">
-    Stand des Originalplans: __STAND__. Diese Seite wurde am __BUILT__ aus dem Originalplan erzeugt.
+    Stand des Originalplans: __STAND__.
+    Diese Seite wurde am __BUILT__ aus dem Originalplan erzeugt.
     Alle Angaben ohne Gewähr, maßgeblich ist der
     <a href="__SOURCE_URL__" target="_blank" rel="noopener">Originalplan</a>.
   </p>
@@ -491,9 +493,10 @@ var PLAN = __PLAN_JSON__;
     wn.hidden = notes.length === 0;
     wn.textContent = notes.join(" ");
 
+    var inThisWeek = todayMs >= start && todayMs <= start + 4 * DAY;
     for (var d = 0; d < 5; d++) {
       var ms = start + d * DAY, iso = isoOf(ms);
-      var col = el("section", "day" + (ms === todayMs ? " is-today" : ""));
+      var col = el("section", "day" + (ms === todayMs ? " is-today" : "") + (inThisWeek && ms < todayMs ? " is-past" : ""));
       var head = el("div", "dayhead");
       head.appendChild(el("span", "dname", DNAMES[d]));
       head.appendChild(el("span", "ddate", dm(ms)));
@@ -559,8 +562,8 @@ var PLAN = __PLAN_JSON__;
     }
     if (!running && !gapNow && cards.length) {
       var line = el("div", "nowline", "Jetzt " + pad(nw.getHours()) + ":" + pad(nw.getMinutes()));
+      // Nach dem letzten Termin des Tages (auch freiwillig) gibt es keine Linie mehr.
       if (anchor) col.insertBefore(line, anchor);
-      else col.appendChild(line);
     }
   }
 
