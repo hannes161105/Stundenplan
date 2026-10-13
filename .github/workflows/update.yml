@@ -34,12 +34,13 @@ jobs:
       - name: Neue Seite speichern
         run: |
           # Nur die Uhrzeit des Bauens zu ändern reicht nicht für einen neuen Stand.
-          if git diff --quiet -I'Diese Seite wurde am' -- index.html; then
+          git add -N verlauf.json 2>/dev/null || true
+          if git diff --quiet -I'Diese Seite wurde am' -- index.html verlauf.json; then
             echo "Keine Änderung im Plan."
           else
             git config user.name "stundenplan-bot"
             git config user.email "actions@users.noreply.github.com"
-            git add index.html
+            git add index.html verlauf.json
             git commit -m "Stundenplan aktualisiert"
             git push
           fi
