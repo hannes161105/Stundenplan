@@ -47,7 +47,7 @@ PHYSIK_LABOR = {
     "2027-01-11": 1,
 }
 
-# Elektrotechnik-Praktikum GET I, Gruppe AB6 (Datum -> Versuch). Beide Blöcke des Tages gelten.
+# Elektrotechnik-Praktikum GET I, Gruppe AB6 (Datum -> Versuch). Montags, beide Blöcke des Tages gelten.
 ET_PRAKTIKUM = {
     "2026-10-12": "4/05",
     "2026-11-02": "3/05",
@@ -281,6 +281,7 @@ h1 { margin: 0; font: 800 clamp(28px, 6vw, 40px)/1.05 var(--font-display); lette
 .weeknote { margin: 4px 0 0; font-size: 13px; color: var(--muted); }
 
 .days { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 12px; margin-top: 14px; }
+.day.is-past > :not(.dayhead) { opacity: .6; }
 @media (max-width: 1099px) { .day.is-past { display: none; } }
 @media (min-width: 1100px) { .days { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
 .day { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 10px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
@@ -688,6 +689,33 @@ def render_page(plan, stand, standalone=True):
     return HEAD_PART + body
 
 
+# ----------------------------------------------------------------------------
+# Verlauf: der Originalplan löscht vergangene Tage, hier bleiben sie erhalten
+# ----------------------------------------------------------------------------
+def merge_history(plan, hist, today):
+    """Vergangene Tage kommen aus dem gespeicherten Verlauf, heutige und künftige Tage immer frisch aus dem Originalplan."""
+    events = dict(hist.get("events", {}))
+    for d, evs in plan["events"].items():
+        if d >= today or d not in events:
+            events[d] = evs
+    events = {d: e for d, e in events.items() if d < today or d in plan["events"]}
+    weeks = {w["s"]: w for w in hist.get("weeks", [])}
+    for w in plan["weeks"]:
+        weeks[w["s"]] = w
+    return {"weeks": [weeks[k] for k in sorted(weeks)], "events": events}
+
+
+def load_history(path):
+    try:
+        with open(path, encoding="utf-8") as f:
+            data = json.load(f)
+        if isinstance(data, dict) and isinstance(data.get("events"), dict):
+            return data
+    except (OSError, ValueError):
+        pass
+    return {}
+
+
 def load_source(args):
     if "--file" in args:
         with open(args[args.index("--file") + 1], encoding="utf-8") as f:
@@ -709,6 +737,16 @@ def main():
         plan = build_plan(stand, weeks, raw)
     except Exception as e:  # bewusst breit: jede Störung bricht ab, index.html bleibt unverändert
         sys.exit("FEHLER: %s" % e)
+
+    # Verlauf: bei jedem Bauen mitführen und speichern (Datei liegt neben index.html).
+    hist_path = args[args.index("--history") + 1] if "--history" in args else \
+        os.path.join(os.path.dirname(os.path.abspath(out)), "verlauf.json")
+    today = args[args.index("--heute") + 1] if "--heute" in args else \
+        dt.datetime.now(ZoneInfo("Europe/Berlin")).date().isoformat()
+    plan = merge_history(plan, load_history(hist_path), today)
+    with open(hist_path, "w", encoding="utf-8") as f:
+        json.dump(plan, f, ensure_ascii=False, sort_keys=True, indent=1)
+        f.write("\n")
 
     n = sum(len(v) for v in plan["events"].values())
     with open(out, "w", encoding="utf-8") as f:
