@@ -38,6 +38,8 @@ INFORMATIK_GRUPPE = "Gruppe 2"
 INFORMATIK_PRAKTIKUM_START = "14:00"
 
 # Physik-Labor: deine festen Termine (Datum -> Versuchsnummer). Beide Blöcke des Tages gelten.
+# Physik-Labor: nur der erste Block des Tages gilt (12:15 bis 13:45), der Block um 14:00 entfällt.
+PHYSIK_LABOR_START = "12:15"
 PHYSIK_LABOR = {
     "2026-10-19": 3,
     "2026-11-02": 4,
@@ -60,6 +62,13 @@ ET_VERSUCHE = {
     "3/05": "Leistungsmessung",
     "4/05": "Gleichstromnetzwerke",
 }
+
+# Ausfälle von Hand: Veranstaltungen, die ausfallen, im Originalplan aber nicht gestrichen sind.
+# Pro Zeile: ("Datum", "Startzeit", "Stichwort aus dem Titel"). Sie erscheinen rot und durchgestrichen.
+# Weil das Datum dabei steht, gilt ein Eintrag automatisch nur für diesen einen Tag.
+# Beispiel: ("2026-10-22", "10:00", "Informatik"),
+AUSFALL = [
+]
 
 # Freiwillige Veranstaltungen (werden dezent angezeigt).
 FREIWILLIG = {("T", "Physik Praktikumsbericht Tutorium"), ("Ü", "Lernwerkstatt online")}
@@ -107,7 +116,7 @@ def entscheide(ev):
     if key == ("P", "Bautechnik und Mechanik"):
         return ("P", "Bautechnik und Mechanik, Praktikum", "") if datum >= BAUTECHNIK_PRAKTIKUM_AB else None
     if key == ("P", "Grundlagen Physik"):
-        if datum not in PHYSIK_LABOR:
+        if datum not in PHYSIK_LABOR or ev["s"] != PHYSIK_LABOR_START:
             return None
         return ("P", "Grundlagen Physik, Praktikum", "Versuch %s" % PHYSIK_LABOR[datum])
     if key == ("P", "Grundlagen Elektrotechnik I EI"):
@@ -304,6 +313,7 @@ h1 { margin: 0; font: 800 clamp(28px, 6vw, 40px)/1.05 var(--font-display); lette
 .time { font: 500 12.5px var(--font-mono); font-variant-numeric: tabular-nums; }
 .title { font-weight: 700; overflow-wrap: anywhere; }
 .meta { font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
+.meta .room { font-weight: 800; color: var(--ink); }
 .ev.must .meta { color: color-mix(in srgb, var(--ink) 70%, transparent); }
 .note { font-size: 12.5px; font-weight: 600; color: var(--k); }
 .warn { font-size: 12.5px; font-weight: 700; color: var(--alert); }
@@ -318,6 +328,12 @@ h1 { margin: 0; font: 800 clamp(28px, 6vw, 40px)/1.05 var(--font-display); lette
 .gap.live { border-left-color: var(--accent); color: var(--ink); }
 .gap.live .gl { color: var(--accent); }
 .gap.past { opacity: .5; }
+.cancel-btn { justify-self: start; margin-top: 6px; font: 600 12px var(--font-body); color: var(--ink); background: transparent; border: 1px solid var(--line); border-radius: 4px; padding: 5px 10px; cursor: pointer; }
+.cancel-btn:hover { border-color: var(--alert); color: var(--alert); }
+.ev.cancel { background: color-mix(in srgb, var(--alert) 12%, var(--surface)); border: 1.5px solid color-mix(in srgb, var(--alert) 55%, transparent); box-shadow: none; }
+.ev.cancel .title, .ev.cancel .time, .ev.cancel .meta { text-decoration: line-through; text-decoration-color: var(--alert); color: var(--muted); }
+.ev.cancel .chip { background: var(--alert); box-shadow: none; color: var(--on-k); }
+.ev .tag.cancel-tag { margin-left: auto; color: var(--alert); font-weight: 700; font-size: 11px; letter-spacing: .05em; text-transform: uppercase; }
 .ev.past { opacity: .5; }
 .ev.live { box-shadow: 0 0 0 1.5px var(--k, var(--accent)); }
 .prog { display: grid; gap: 4px; margin-top: 6px; }
@@ -353,6 +369,7 @@ BODY_PART = r'''<div class="wrap">
     <div class="toggles">
       <label class="toggle"><input type="checkbox" id="vol" checked> Freiwillige Termine anzeigen</label>
       <label class="toggle"><input type="checkbox" id="gap" checked> Pausen anzeigen</label>
+      <label class="toggle"><input type="checkbox" id="edit"> Ausfälle eintragen</label>
     </div>
   </header>
 
@@ -440,21 +457,53 @@ var PLAN = __PLAN_JSON__;
   var gapBox = $("gap");
   gapBox.checked = showGap;
 
-  function renderEvent(ev) {
+  // Ausfälle, die du selbst einträgst: gelten nur auf diesem Gerät und verfallen von selbst nach dem Tag.
+  var editBox = $("edit");
+  var local = {};
+  function loadLocal() {
+    try { local = JSON.parse(localStorage.getItem("sp-ausfall") || "{}") || {}; } catch (e) { local = {}; }
+    var heute = isoOf(todayMs);
+    var geaendert = false;
+    for (var k in local) { if (k.split("|")[0] < heute) { delete local[k]; geaendert = true; } }
+    if (geaendert) saveLocal();
+  }
+  function saveLocal() { try { localStorage.setItem("sp-ausfall", JSON.stringify(local)); } catch (e) {} }
+  loadLocal();
+  function keyOf(iso, ev) { return iso + "|" + ev.s + "|" + ev.t; }
+
+  function renderEvent(ev, iso) {
     var vol = ev.k === "T" || ev.k === "L" || ev.k === "W";
     var n = el("article", "ev " + (vol ? "vol" : ev.k === "X" ? "neutral" : "must"));
     n.setAttribute("data-k", ev.k);
     if (ev.f && (!vol || ev.k === "W")) n.setAttribute("data-f", ev.f);
     n.setAttribute("data-s", ev.s);
     n.setAttribute("data-e", ev.e);
+    if (ev.g) n.classList.add("cancel");
     var row = el("div", "row");
     if (!vol) row.appendChild(el("span", "chip", CHIP[ev.k]));
     row.appendChild(el("span", "time", ev.s + "–" + ev.e));
     if (vol) row.appendChild(el("span", "tag", VOLTAG[ev.k]));
+    if (ev.g) row.appendChild(el("span", "tag cancel-tag", "Entfällt"));
     n.appendChild(row);
     n.appendChild(el("div", "title", ev.t));
-    var meta = [ev.r, ev.w].filter(Boolean).join(" · ");
-    if (meta) n.appendChild(el("div", "meta", meta));
+    if (ev.r || ev.w) {
+      var meta = el("div", "meta");
+      if (ev.r) meta.appendChild(el("strong", "room", ev.r));
+      if (ev.r && ev.w) meta.appendChild(document.createTextNode(" · "));
+      if (ev.w) meta.appendChild(document.createTextNode(ev.w));
+      n.appendChild(meta);
+    }
+    if (editBox.checked && iso >= isoOf(todayMs) && !(ev.g && !local[keyOf(iso, ev)])) {
+      var btn = el("button", "cancel-btn", local[keyOf(iso, ev)] ? "Doch nicht ausgefallen" : "Entfällt");
+      btn.type = "button";
+      btn.addEventListener("click", function () {
+        var k = keyOf(iso, ev);
+        if (local[k]) delete local[k]; else local[k] = 1;
+        saveLocal();
+        render();
+      });
+      n.appendChild(btn);
+    }
     if (ev.n) n.appendChild(el("div", "note", ev.n));
     if (ev.x) n.appendChild(el("div", "warn", ev.x));
     return n;
@@ -506,11 +555,13 @@ var PLAN = __PLAN_JSON__;
       var evs = (PLAN.events[iso] || []).filter(function (ev) { return showVol || (ev.k !== "T" && ev.k !== "L" && ev.k !== "W"); });
       if (!evs.length) col.appendChild(el("p", "free", "Keine Termine"));
       var maxEnd = null;
-      evs.forEach(function (ev) {
+      evs.forEach(function (ev0) {
+        var ev = ev0;
+        if (!ev0.g && local[keyOf(iso, ev0)]) { ev = {}; for (var kk in ev0) ev[kk] = ev0[kk]; ev.g = 1; }
         var s = mins(ev.s), e = mins(ev.e);
-        if (showGap && maxEnd !== null && s - maxEnd >= 30) col.appendChild(renderGap(maxEnd, s));
-        col.appendChild(renderEvent(ev));
-        if (maxEnd === null || e > maxEnd) maxEnd = e;
+        if (!ev.g && showGap && maxEnd !== null && s - maxEnd >= 30) col.appendChild(renderGap(maxEnd, s));
+        col.appendChild(renderEvent(ev, iso));
+        if (!ev.g && (maxEnd === null || e > maxEnd)) maxEnd = e;
       });
       box.appendChild(col);
     }
@@ -533,6 +584,7 @@ var PLAN = __PLAN_JSON__;
     var running = false, anchor = null, gapNow = null;
     for (var j = 0; j < cards.length; j++) {
       var c = cards[j], s = mins(c.getAttribute("data-s")), e = mins(c.getAttribute("data-e"));
+      if (c.classList.contains("cancel")) continue;
       var isGap = c.classList.contains("gap");
       c.classList.remove("past", "live");
       if (nowMin >= e) { c.classList.add("past"); continue; }
@@ -568,6 +620,7 @@ var PLAN = __PLAN_JSON__;
     }
   }
 
+  editBox.addEventListener("change", function () { render(); });
   gapBox.addEventListener("change", function () {
     showGap = gapBox.checked;
     try { localStorage.setItem("sp-gap", showGap ? "1" : "0"); } catch (e) {}
@@ -705,6 +758,22 @@ def merge_history(plan, hist, today):
     return {"weeks": [weeks[k] for k in sorted(weeks)], "events": events}
 
 
+def nachfilter(plan):
+    """Wendet Regeln auch auf schon gespeicherte Tage an und markiert Ausfälle."""
+    for d, evs in plan["events"].items():
+        keep = []
+        for ev in evs:
+            if ev["f"] == "physik" and ev["k"] == "P" and ev["s"] != PHYSIK_LABOR_START:
+                continue
+            ev.pop("g", None)
+            for datum, start, wort in AUSFALL:
+                if d == datum and ev["s"] == start and wort in ev["t"]:
+                    ev["g"] = 1
+            keep.append(ev)
+        plan["events"][d] = keep
+    return plan
+
+
 def load_history(path):
     try:
         with open(path, encoding="utf-8") as f:
@@ -743,7 +812,7 @@ def main():
         os.path.join(os.path.dirname(os.path.abspath(out)), "verlauf.json")
     today = args[args.index("--heute") + 1] if "--heute" in args else \
         dt.datetime.now(ZoneInfo("Europe/Berlin")).date().isoformat()
-    plan = merge_history(plan, load_history(hist_path), today)
+    plan = nachfilter(merge_history(plan, load_history(hist_path), today))
     with open(hist_path, "w", encoding="utf-8") as f:
         json.dump(plan, f, ensure_ascii=False, sort_keys=True, indent=1)
         f.write("\n")
