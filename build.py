@@ -817,6 +817,16 @@ def main():
         json.dump(plan, f, ensure_ascii=False, sort_keys=True, indent=1)
         f.write("\n")
 
+    # Für die Standheizung (heizung.py): erster Pflichttermin pro Tag, z. B. {"2026-11-09": "10:00"}.
+    # Freiwillige Termine (Tutorium, Lernwerkstatt, Vertiefung) und Ausfälle zählen nicht.
+    termine = {}
+    for d, evs in plan["events"].items():
+        zeiten = [ev["s"] for ev in evs if ev["k"] not in ("T", "L", "W") and not ev.get("g")]
+        if zeiten:
+            termine[d] = min(zeiten)
+    with open(os.path.join(os.path.dirname(os.path.abspath(out)), "termine.json"), "w", encoding="utf-8") as f:
+        json.dump(termine, f, sort_keys=True, indent=1)
+
     n = sum(len(v) for v in plan["events"].values())
     with open(out, "w", encoding="utf-8") as f:
         f.write(render_page(plan, stand))
