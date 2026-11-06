@@ -1,0 +1,23 @@
+# Plant jeden Abend um 22 Uhr die Standheizung für den nächsten Tag.
+# Gehört in den Ordner .github/workflows/ im Repository "Stundenplan".
+name: Standheizung planen
+
+on:
+  schedule:
+    - cron: "0 21 * * *"     # 21 Uhr UTC = 22 Uhr Winterzeit (im Sommer 23 Uhr)
+  workflow_dispatch:          # zusätzlich: Knopf "Run workflow" zum Testen
+
+jobs:
+  planen:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install requests tinytuya
+      - run: python heizung.py
+        env:
+          TUYA_KEY: ${{ secrets.TUYA_KEY }}
+          TUYA_SECRET: ${{ secrets.TUYA_SECRET }}
+          TUYA_GERAET: ${{ secrets.TUYA_GERAET }}
