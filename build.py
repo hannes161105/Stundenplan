@@ -175,7 +175,7 @@ def parse_plan(src):
 
 
 def parse_cell(lines):
-    tm = re.match(r"^(\d{1,2}):(\d{2}) - (\d{1,2}):(\d{2}) Uhr$", lines[0])
+    tm = re.match(r"^(\d{1,2}):(\d{2}) - (\d{1,2}):(\d{2})(?: Uhr)?$", lines[0])
     dm = re.match(r"^(?:Mo|Di|Mi|Do|Fr|Sa|So), (\d{2})\.(\d{2})\.(\d{4})(?: \[(\d+)\])?$", lines[-1])
     if not tm or not dm:
         raise ValueError("Unerwarteter Zellaufbau: %r" % (lines,))
