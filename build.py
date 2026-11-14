@@ -30,8 +30,12 @@ SOURCE_URL = ("https://moodle.fh-westkueste.de/sked/jahrg%C3%A4ngefbw/"
 # Das Physik-Tutorium beginnt laut Physik-Terminliste erst am 19.10.2026.
 TUTORIUM_AB = "2026-10-19"
 
-# Praktikum Bautechnik und Mechanik, Gruppe 1 (AB): freitags 10:00 bis 13:15 (beide Blöcke), nur an diesen Tagen.
-BAUTECHNIK_PRAKTIKUM = ("2026-11-20", "2026-11-27", "2026-12-04")
+# Das Praktikum Bautechnik und Mechanik beginnt am 30.10.2026 (davor ausgeblendet).
+BAUTECHNIK_PRAKTIKUM_AB = "2026-10-30"
+
+# An diesen drei Freitagen (Gruppe 1 AB, 10:00 bis 13:15) ist dein Praktikum im Raum 1.012.
+# An allen anderen Tagen bleibt der Raum aus dem Originalplan stehen.
+BAUTECHNIK_RAUM_1012 = ("2026-11-20", "2026-11-27", "2026-12-04")
 
 # Informatik-Praktikum: Du bist in Gruppe 2, also nur der Termin, der um 14:00 beginnt.
 INFORMATIK_GRUPPE = "Gruppe 2"
@@ -114,7 +118,7 @@ def entscheide(ev):
     if key == ("Ü", "Lernwerkstatt online"):
         return ("L", titel, "")
     if key == ("P", "Bautechnik und Mechanik"):
-        return ("P", "Bautechnik und Mechanik, Praktikum", "") if datum in BAUTECHNIK_PRAKTIKUM else None
+        return ("P", "Bautechnik und Mechanik, Praktikum", "") if datum >= BAUTECHNIK_PRAKTIKUM_AB else None
     if key == ("P", "Grundlagen Physik"):
         if datum not in PHYSIK_LABOR or ev["s"] != PHYSIK_LABOR_START:
             return None
@@ -765,12 +769,15 @@ def nachfilter(plan):
         for ev in evs:
             if ev["f"] == "physik" and ev["k"] == "P" and ev["s"] != PHYSIK_LABOR_START:
                 continue
-            if ev["t"] == "Bautechnik und Mechanik, Praktikum" and d not in BAUTECHNIK_PRAKTIKUM:
-                continue
-            # Bautechnik-Praktikum: Dein Raum ist 1.012 (der zweite Raum im Originalplan gehört zur anderen Gruppe).
+            # Bautechnik-Praktikum an deinen drei Tagen: nur Raum 1.012 (der zweite Raum im Originalplan gehört zur anderen Gruppe).
             # Steht im Originalplan ein ganz anderer Raum, bleibt er stehen.
-            if ev["t"] == "Bautechnik und Mechanik, Praktikum" and "1.012" in ev["r"]:
+            if ev["t"] == "Bautechnik und Mechanik, Praktikum" and d in BAUTECHNIK_RAUM_1012 and "1.012" in ev["r"]:
                 ev["r"] = "1.012"
+            # Nach deinem letzten Praktikumstag (04.12.) wird der Raum 1.012 aus der Anzeige gestrichen,
+            # ein anderer Raum aus dem Originalplan (z. B. H12) bleibt stehen.
+            if ev["t"] == "Bautechnik und Mechanik, Praktikum" and d > max(BAUTECHNIK_RAUM_1012):
+                raeume = [r.strip() for r in ev["r"].split(",")]
+                ev["r"] = ", ".join(r for r in raeume if r and r != "1.012")
             ev.pop("g", None)
             for datum, start, wort in AUSFALL:
                 if d == datum and ev["s"] == start and wort in ev["t"]:
